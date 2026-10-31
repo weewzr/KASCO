@@ -6,7 +6,7 @@ Airbus Challenge 3, Autonomous SG 2026. Built by Wee Zhern Ray, Year 3 Chemical 
 
 **Live app:** https://weewzr.github.io/airbustrack3ray/
 
-KASCO is a working prototype of a planning tool for a Sustainable Aviation Fuel network across Kalimantan. It picks refinery and depot locations and sizes, routes biomass and SAF to the four international airports, and shows the proof behind each number. The solver is written in Rust and compiled to WebAssembly, so the whole product runs in the browser from GitHub Pages with no server. An optional Claude Opus 5.5 analyst answers free-form questions from solver data, using the viewer's own API key.
+KASCO is a working prototype of a planning tool for a Sustainable Aviation Fuel network across Kalimantan. It picks refinery and depot locations and sizes, routes biomass and SAF to the four international airports, and shows the proof behind each number. The solver is written in Rust and compiled to WebAssembly, so the whole product runs in the browser from GitHub Pages with no server. An optional Claude Sonnet 5.5 analyst answers free-form questions from solver data, using the viewer's own API key.
 
 ## Who it is for
 
@@ -19,7 +19,7 @@ A SAF network planner who must decide where to commit about USD 4.7B of plant ca
 | A. Interactive map | Network map tab: 80 sites, flows by leg, click-through figures, layer toggles, side-by-side comparison |
 | B. Optimisation engine | `crates/engine`: Lagrangian branch-and-bound, exact min-cost flow, continuous location refinement |
 | C. Scenario simulator | Optimisation and Scenario analysis tabs: every input is editable and reruns the real solver in the browser |
-| D. Decision support | Decision support tab: rule-based and fully traceable, with no language model. What-ifs can change several inputs and rerun the solver, and they refuse if any part is unclear. Questions outside the model are declined. The optional Ask Claude Opus 5.5 panel (`docs/assistant.js`) answers free-form questions in short bullets from a snapshot of solver data, opens the matching visual and suggests what to explore next. The viewer's key stays in tab memory and goes only to api.anthropic.com, and lines with a figure not found in the data are removed |
+| D. Decision support | Decision support tab: rule-based and fully traceable, with no language model. What-ifs can change several inputs and rerun the solver, and they refuse if any part is unclear. Questions outside the model are declined. The optional Ask Claude Sonnet 5.5 panel (`docs/assistant.js`) answers free-form questions in short bullets from a snapshot of solver data, opens the matching visual and suggests what to explore next. The viewer's key stays in tab memory and goes only to api.anthropic.com, and lines with a figure not found in the data are removed |
 | E. Evaluation and evidence | Evaluation and Reports tabs, plus `docs/reports` |
 
 ## Official inputs

@@ -1,9 +1,9 @@
 "use strict";
-// Optional analyst: Claude Opus 5.5 answers free-form questions from the solver's data and opens
+// Optional analyst: Claude Sonnet 5.5 answers free-form questions from the solver's data and opens
 // the visual that backs the answer. The viewer supplies their own key, held in this tab's memory
 // only and sent only to api.anthropic.com. Lines with a figure not found in the data are removed.
 (() => {
-  const MODEL = "claude-opus-5-5";
+  const MODEL = "claude-sonnet-5-5";
   const PANELS = {
     headline: ["overview", "", "Headline cost, fleet, biomass, SAF delivered and proven gap for the selected scenario"],
     cost_split: ["overview", "Where the money goes", "Bar splitting annual cost into CapEx, OpEx and transport"],
@@ -217,14 +217,14 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
     const btn = $("#gAsk");
     btn.disabled = true;
     add(esc(q), "q");
-    const wait = add("Opus 5.5 is reading the data...");
+    const wait = add("Sonnet 5.5 is reading the data...");
     try {
       const data = JSON.stringify(snapshot());
       const pool = numbers(`${data} ${q}`);
       const messages = [{ role: "user", content: `Dashboard data as JSON:\n${data}\n\nQuestion: ${q}` }];
       for (let turn = 0; turn < 4; turn++) {
         const r = await call(messages);
-        if (r.stop_reason === "refusal") { add("Opus 5.5 declined this question.", "no"); break; }
+        if (r.stop_reason === "refusal") { add("Sonnet 5.5 declined this question.", "no"); break; }
         if (r.stop_reason === "max_tokens") { add("The answer was cut off. Please ask again.", "no"); break; }
         messages.push({ role: "assistant", content: r.content });
         const uses = r.content.filter((b) => b.type === "tool_use");
@@ -253,10 +253,10 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
 
   function mount() {
     const box = document.createElement("div");
-    box.innerHTML = `<button class="btn" id="gOpen">Ask Claude Opus 5.5</button>
+    box.innerHTML = `<button class="btn" id="gOpen">Ask Claude Sonnet 5.5</button>
     <aside id="gPanel" hidden>
       <div class="row between"><h3>Ask in your own words</h3><button class="btn ghost" id="gClose">Close</button></div>
-      <p class="note">Optional analyst. Claude Opus 5.5 answers from the solver's data, and any line with a figure not found in that data is removed.</p>
+      <p class="note">Optional analyst. Claude Sonnet 5.5 answers from the solver's data, and any line with a figure not found in that data is removed.</p>
       <div id="gKeyRow" class="ask"><input type="password" id="gKey" placeholder="Paste your Anthropic API key" autocomplete="off" spellcheck="false"><button class="btn" id="gSave">Use key</button></div>
       <p class="note" id="gKeyNote">Your key stays in this tab's memory, is sent only to api.anthropic.com and is never saved.</p>
       <div class="ask"><input type="text" id="gQ" placeholder="For example: is the Tarakan supply risky?"><button class="btn" id="gAsk">Ask</button></div>

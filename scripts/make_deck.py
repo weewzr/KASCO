@@ -222,7 +222,7 @@ for i, (h, d) in enumerate(items):
     card(s, x, 3.0, 2.9, 2.6)
     text(s, x + 0.2, 3.2, 2.5, 1.0, h, size=21, bold=True, color=TEAL)
     text(s, x + 0.2, 4.3, 2.5, 1.2, d, size=17, color=MUTED)
-text(s, 0.6, 5.95, 12.1, 0.5, "Runs in the browser from GitHub Pages with no server. The optional Claude Opus 5.5 analyst uses the viewer's own API key.", size=18, color=MUTED)
+text(s, 0.6, 5.95, 12.1, 0.5, "Runs in the browser from GitHub Pages with no server. The optional Claude Sonnet 5.5 analyst uses the viewer's own API key.", size=18, color=MUTED)
 
 # 4. MVP
 s = slide("A working prototype, live now",
