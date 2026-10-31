@@ -92,15 +92,30 @@ a { color: #7fb4f0; }
 .bar i { display: block; height: 6px; border-radius: 3px; background: #2a78d6; }
 .leaflet-control-layers { background: rgba(16, 35, 58, .92) !important; color: var(--text) !important; border: 1px solid var(--line) !important; font-size: 12.5px; }
 #gOpen { position: fixed; right: 18px; bottom: 18px; z-index: 2000; }
-#gPanel { position: fixed; right: 18px; bottom: 18px; z-index: 2000; width: min(420px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: auto; background: #10233a; border: 1px solid #27445f; border-radius: 10px; padding: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .5); }
+#gPanel { position: fixed; right: 18px; bottom: 18px; z-index: 2000; width: min(460px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: auto; background: #10233a; border: 1px solid #27445f; border-radius: 10px; padding: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .5); }
 #gPanel[hidden], #gOpen[hidden], #gKeyRow[hidden] { display: none; }
 #gPanel h3 { margin: 0; }
-#gOut ul { margin: 4px 0; padding-left: 18px; }
-#gOut li { margin: 2px 0; }
-#gOut h4 { margin: 9px 0 3px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-#gOut .chip { margin: 3px 0; }
-#gOut details { font-size: 12.5px; color: var(--muted); }
-.gNext .note { margin-left: 4px; }
+#gOut { font-size: 12.5px; line-height: 1.42; }
+#gOut .msg { margin: 6px 0; padding: 6px 10px; }
+#gOut .msg.q { color: var(--text-2); }
+#gOut .msg.gAns { background: none; border-left: 0; padding: 0; }
+#gOut .msg p { margin: 0; }
+#gOut ul { margin: 3px 0; padding-left: 17px; }
+#gOut li { margin: 1px 0; }
+#gOut h4 { margin: 9px 0 3px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+#gOut details { color: var(--muted); }
+#gOut .note { margin: 6px 0 0; font-size: 11.5px; }
+.gTurn { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.gTurn:last-child { border-bottom: 0; margin-bottom: 0; }
+.gBox { padding: 8px 10px; border-left: 4px solid; border-radius: 5px; font-size: 13.5px; line-height: 1.38; font-weight: 600; color: #fff; }
+.gBox.good { background: #123f2d; border-color: #2fbf71; }
+.gBox.qualified { background: #46360e; border-color: #e0a526; }
+.gBox.bad { background: #4c1d1b; border-color: #ef5a45; }
+.gBox.none { background: #2b3a48; border-color: #93a4b3; }
+.gTag { display: block; margin-bottom: 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
+.gPoint { margin-top: 8px; }
+#gOut .gMean { margin-top: 2px; padding-left: 8px; border-left: 2px solid var(--line); color: var(--text-2); }
+.gMean b { color: var(--text); font-weight: 600; }
 .pointed { outline: 3px solid #19b5a5; outline-offset: 3px; border-radius: 8px; }
 @media (max-width: 720px) {
   .top, #tabs { padding-left: 16px; padding-right: 16px; }
