@@ -19,6 +19,8 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Inches, Pt
 
+from pitch import SCRIPT, plain
+
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "docs" / "data"
 REP = ROOT / "docs" / "reports"
@@ -137,23 +139,63 @@ def source(s, t):
     text(s, 0.6, 6.92, 12.1, 0.35, t, size=11, color=MUTED)
 
 
-# 1. Cover
+# 1. Cover, in the style of the user's reference with real logos and the solved network
+ART = REP / "fig" / "brand"
 s = prs.slides.add_slide(BLANK)
 bg(s)
-s.shapes.add_picture(str(REP / "fig" / "map_clean_dark.png"), Inches(6.5), Inches(0.75), height=Inches(5.3))
-text(s, 0.6, 0.55, 6, 0.4, "AUTONOMOUS SG HACKATHON 2026  |  AIRBUS CHALLENGE #3", size=14, bold=True, color=TEAL)
-text(s, 0.6, 1.25, 6.2, 1.5, "KASCO", size=88, bold=True)
-text(s, 0.6, 2.85, 6.2, 0.6, "Kalimantan SAF Supply Chain Optimiser", size=26, bold=True)
-text(s, 0.6, 3.5, 5.9, 0.9, "AI-Driven Optimisation for a More Sustainable Aviation Future", size=20, color=MUTED)
-text(s, 0.6, 4.6, 5.9, 0.4, "Presenter: Wee Zhern Ray", size=18, bold=True, color=TEAL)
-text(s, 0.6, 5.0, 5.9, 0.7, "Map shows KASCO's solved base-case network on a Natural Earth coastline.", size=13, color=MUTED)
-text(s, 0.6, 6.12, 12.1, 0.3, "Event organisers and partners, named for context", size=12, color=MUTED)
-widths = [2.35, 1.75, 0.85, 1.35, 1.35, 3.6]
-x = 0.6
-for name, w in zip(PARTNERS, widths):
-    text(s, x, 6.45, w, 0.4, name, size=15, bold=True)
-    x += w + 0.14
-s.notes_slide.notes_text_frame.text = "I'm Wee Zhern Ray, and this is KASCO, the Kalimantan SAF Supply Chain Optimiser, built for Airbus Challenge 3."
+s.shapes.add_picture(str(ART / "cover_bg.jpg"), 0, 0, width=prs.slide_width, height=prs.slide_height)
+
+
+def logo(s, name, x, y, h):
+    w, h_px = Image.open(ART / f"logo_{name}.png").size
+    width = h * w / h_px
+    s.shapes.add_picture(str(ART / f"logo_{name}.png"), Inches(x), Inches(y), height=Inches(h))
+    return x + width
+
+
+x = 0.42
+groups = [("Organised by", [("acacia", 0.52), ("product_club", 0.52)]), ("Supported by", [("claude", 0.36)]), ("Powered by", [("airbus", 0.3), ("five_degrees", 0.3), ("nus_hackers", 0.5)])]
+for label, items in groups:
+    text(s, x, 0.1, 3, 0.2, label, size=10, color=MUTED)
+    for name, h in items:
+        x = logo(s, name, x, 0.36 + (0.52 - h) / 2, h) + 0.24
+    x += 0.2
+text(s, x, 0.1, 2, 0.2, "Hosted at", size=10, color=MUTED)
+text(s, x, 0.34, 13.2 - x, 0.56, ["National University", "of Singapore"], size=13, bold=True, gap=0)
+
+text(s, 0.55, 1.2, 8, 0.32, "A U T O N O M O U S   S G   H A C K A T H O N   2 0 2 6", size=15, bold=True)
+text(s, 0.55, 1.53, 8, 0.28, "AI & AEROSPACE TRACK   |   AIRBUS CHALLENGE #3", size=12, color=MUTED)
+s.shapes.add_picture(str(ART / "wordmark.png"), Inches(0.5), Inches(1.9), height=Inches(1.5))
+text(s, 0.55, 3.42, 8, 0.55, "Kalimantan SAF Supply Chain Optimiser", size=30, bold=True)
+text(s, 0.55, 3.98, 7.2, 0.4, "AI-Driven Optimisation for a More Sustainable Aviation Future", size=17, color=MUTED)
+
+labels = ["LOCAL BIOMASS", "OPTIMAL FACILITIES", "EFFICIENT LOGISTICS", "SUSTAINABLE AVIATION"]
+for i, l in enumerate(labels):
+    cx = 1.05 + i * 1.82
+    s.shapes.add_picture(str(ART / f"flow_{i}.png"), Inches(cx - 0.42), Inches(4.5), height=Inches(0.84))
+    text(s, cx - 0.82, 5.38, 1.64, 0.5, l, size=11, bold=True, align=PP_ALIGN.CENTER, gap=0)
+    if i < 3:
+        a = s.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(cx + 0.58), Inches(4.83), Inches(0.62), Inches(0.18))
+        a.fill.solid()
+        a.fill.fore_color.rgb = rgb(TEAL)
+        a.line.fill.background()
+        a.shadow.inherit = False
+
+m = card(s, 8.15, 3.95, 4.8, 2.25)
+m.fill.fore_color.rgb = rgb("%02X%02X%02X" % Image.open(REP / "fig" / "map_clean_dark.png").convert("RGB").getpixel((3, 3)))
+s.shapes.add_picture(str(REP / "fig" / "map_clean_dark.png"), Inches(8.2), Inches(4.0), height=Inches(2.15))
+text(s, 10.55, 4.12, 2.3, 0.3, "Solved base case", size=12, bold=True, color=TEAL)
+text(s, 10.55, 4.46, 2.3, 1.6, ["Pontianak (PNK)", "Pangkalan Bun (PKN)", "Balikpapan (BPN)", "Tarakan (TRK)"], size=13, gap=5)
+
+band = card(s, 0.35, 6.3, 12.63, 0.86)
+band.fill.fore_color.rgb = rgb(NAVY)
+cells = [(f"{K['n_refineries']} refineries", f"{K['n_depots']} depot modules"), ("1,200 kt SAF", "demand met at four airports"), (f"USD {base['objective']:.1f}M a year", "modelled network cost"), ("Wee Zhern Ray", "Presenter")]
+for i, (a, b_) in enumerate(cells):
+    x = 0.55 + i * 3.13
+    s.shapes.add_picture(str(ART / f"band_{i}.png"), Inches(x), Inches(6.45), height=Inches(0.56))
+    text(s, x + 0.68, 6.4, 2.4, 0.34, a, size=16, bold=True)
+    text(s, x + 0.68, 6.72, 2.4, 0.3, b_, size=12, color=MUTED)
+text(s, 0.4, 7.2, 12.6, 0.22, "Illustrative background image, not a modelled location. Map shows KASCO's solved network. Logos from the event poster, shown for event context, with no endorsement implied.", size=9, color=MUTED)
 
 # 2. Problem
 s = slide("Scaling SAF is a siting problem as much as a fuel problem",
@@ -329,6 +371,9 @@ for i, (a, b_, its, c) in enumerate(stages):
     text(s, x + 0.2, 2.42, 2.5, 0.85, b_, size=21, bold=True)
     text(s, x + 0.2, 3.35, 2.55, 3.0, its, size=16, color=MUTED, gap=9)
 source(s, "Stages 2 to 4 are future possibilities, not established results or commercial achievements.")
+
+for sl, (_, line) in zip(prs.slides, SCRIPT):
+    sl.notes_slide.notes_text_frame.text = plain(line)
 
 out = REP / "KASCO_Pitch.pptx"
 prs.save(out)
