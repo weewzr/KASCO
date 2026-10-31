@@ -1,0 +1,12 @@
+[package]
+name = "saf_cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "saf"
+path = "src/main.rs"
+
+[dependencies]
+saf_engine = { path = "../engine" }
+serde_json = "1"
