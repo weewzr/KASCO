@@ -375,7 +375,7 @@ const EXAMPLES = ["Why was this refinery selected?", "Which routes are most expe
 function renderInsights() {
   $("#insights").innerHTML = `
   <h2>Decision support</h2>
-  <p class="note">No language model is used. Questions route by rule to solver records, and every answer lists the fields it read. A what-if can change several inputs at once, and it runs only when every part maps to a validated input. Questions outside the model are declined. Answers apply to the selected scenario: ${esc(state.names[state.cur])}.</p>
+  <p class="note">This panel uses no language model. Questions route by rule to solver records, and every answer lists the fields it read. A what-if can change several inputs at once, and it runs only when every part maps to a validated input. Questions outside the model are declined. Answers apply to the selected scenario: ${esc(state.names[state.cur])}.</p>
   <div class="card">
     <div class="chips">${EXAMPLES.map((e) => `<button class="chip">${esc(e)}</button>`).join("")}</div>
     <div class="ask"><input type="text" id="q" placeholder="Ask about this network"><button class="btn" id="askBtn">Ask</button></div>

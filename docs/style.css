@@ -91,6 +91,12 @@ a { color: #7fb4f0; }
 .bar { height: 6px; background: #e4e3df; border-radius: 3px; margin-top: 6px; }
 .bar i { display: block; height: 6px; border-radius: 3px; background: #2a78d6; }
 .leaflet-control-layers { background: rgba(16, 35, 58, .92) !important; color: var(--text) !important; border: 1px solid var(--line) !important; font-size: 12.5px; }
+#gOpen { position: fixed; right: 18px; bottom: 18px; z-index: 2000; }
+#gPanel { position: fixed; right: 18px; bottom: 18px; z-index: 2000; width: min(420px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: auto; background: #10233a; border: 1px solid #27445f; border-radius: 10px; padding: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .5); }
+#gPanel[hidden], #gOpen[hidden], #gKeyRow[hidden] { display: none; }
+#gPanel h3 { margin: 0; }
+#gOut .btn { margin-top: 6px; }
+.pointed { outline: 3px solid #19b5a5; outline-offset: 3px; border-radius: 8px; }
 @media (max-width: 720px) {
   .top, #tabs { padding-left: 16px; padding-right: 16px; }
   main { padding: 14px 16px 8px; }
