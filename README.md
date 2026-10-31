@@ -62,6 +62,10 @@ Depots sit at refineries under these inputs, because the second leg costs more p
 - Official demand is about 12 times our estimate of today's real jet use at these airports, so this is a hub-scale plan.
 - The model is deterministic and annual, and biomass purchase price is outside the objective by instruction.
 
+## Documents
+
+The technical report, pitch deck and cover image are in `docs/reports`. Submission text and the pitch script are in `docs/SUBMISSION.md`.
+
 ## Run it
 
 Serve the site locally:

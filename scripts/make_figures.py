@@ -49,6 +49,8 @@ def network_map(key, theme, name, title=None, clean=False):
     ax.set_facecolor(t["bg"])
     for ring in LAND:
         xs, ys = zip(*ring)
+        if clean and max(xs) > 119.8:
+            continue
         ax.fill(xs, ys, color=t["land"], ec=t["coast"], lw=0.5, zorder=1)
     pos = s["node_coords"]
     top = max(f["kt"] for f in s["flows_fd"])
@@ -76,8 +78,8 @@ def network_map(key, theme, name, title=None, clean=False):
     for a in NET["airports"]:
         ax.scatter(a["lon"], a["lat"], s=230, marker="o", c=BLUE, edgecolors=t["ring"], linewidths=1.4, zorder=8)
         ax.annotate(a["iata"], (a["lon"], a["lat"]), ha="center", va="center", color="white", fontsize=7, fontweight="bold", zorder=10)
-    ax.set_xlim(108.4, 119.4)
-    ax.set_ylim(-4.6, 4.5)
+    ax.set_xlim(108.4, 119.6 if clean else 119.4)
+    ax.set_ylim(-4.6, 7.4 if clean else 4.5)
     ax.set_aspect("equal")
     ax.tick_params(colors=t["muted"], labelsize=8)
     for sp in ax.spines.values():

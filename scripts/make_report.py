@@ -108,8 +108,10 @@ def usd(x, d=1):
 
 
 # Title
-story.append(Paragraph("Kalimantan SAF Optimiser", ParagraphStyle("T", parent=h1, fontSize=22, leading=27, spaceBefore=0)))
-story.append(Paragraph("Technical report, Airbus Challenge 3, Autonomous SG 2026", ParagraphStyle("S", parent=body, fontSize=11.5, leading=15)))
+story.append(Paragraph("KASCO", ParagraphStyle("T", parent=h1, fontSize=30, leading=35, spaceBefore=0, textColor=colors.HexColor("#0e7f73"))))
+story.append(Paragraph("Kalimantan SAF Supply Chain Optimiser", ParagraphStyle("T2", parent=h1, fontSize=16, leading=20, spaceBefore=0)))
+story.append(Paragraph("AI-Driven Optimisation for a More Sustainable Aviation Future", ParagraphStyle("S0", parent=body, fontSize=11, leading=14)))
+story.append(Paragraph("Technical report, Airbus Challenge 3, Autonomous SG 2026", ParagraphStyle("S", parent=body, fontSize=11, leading=14)))
 P("Wee Zhern Ray, Year 3 Chemical Engineering, National University of Singapore. 31 October 2026.")
 P('Live application: <a href="https://weewzr.github.io/airbustrack3ray/" color="#2a78d6">weewzr.github.io/airbustrack3ray</a>. '
   'Source: <a href="https://github.com/weewzr/airbustrack3ray" color="#2a78d6">github.com/weewzr/airbustrack3ray</a>.')
@@ -146,16 +148,18 @@ P("The objective is equation (1). Equations (2) to (8) are its constraints. Equa
 H2("Assumptions needed to read them")
 P("One-year cost basis with straight-line CapEx and no interest. Biomass mass is taken as stated, with moisture ignored by instruction. All values are deterministic. Masses are annual. Refinery capacity is biomass intake.")
 
-H1("2. Airbus problem definition")
-P("The brief asks for a SAF supply chain across Kalimantan that minimises OpEx, CapEx and logistics while meeting demand at four airports: Supadio (PNK), Iskandar at Pangkalan Bun (PKN), Sepinggan (BPN) and Juwata (TRK). The chain runs biomass site, pre-processing depot, refinery, airport. The answer must give coordinates, facility sizes and routes. The update of 31 October at 12:45 fixed every open parameter and says it overrides the original where they differ.")
-
-H1("3. Kalimantan context and the user")
+H1("2. Problem and industrial context")
 P("The named user is a SAF network planner at a project developer or fuel supplier, recommending sites before front-end engineering. Airbus's Singapore office was reported in August 2025 to be working with IPB University on Indonesian biomass availability, logistics, supply chain mapping and factory siting to cut transport cost, with empty fruit bunches in Sumatra and Kalimantan named as feedstock [19]. The same reports list weak infrastructure, an unclear legal framework and limited large-scale processing as obstacles. Those are secondary reports, and their details differ.")
 P("We found no published description of how planners work today. Comparing a few layouts in GIS and spreadsheets is our reasoned assumption, and it should be read as such. Mistakes are persistent, since a large refinery fixes USD 765M of capital and its haulage for 20 years. Project risk is real: a gasification Fischer-Tropsch plant in Nevada entered bankruptcy in 2024 after equipment and liquidity problems [20].")
 P("SAF supply is scarce, at about 1.9 Mt in 2025 or 0.6% of jet fuel [21]. Indonesia's first requirement, 1% from 2027, covers international flights from its two busiest airports [16], and Pertamina's first SAF was used cooking oil co-processed at Cilacap [22]. Regional studies support residues as a feedstock: about 45.7 Mt of SAF potential across Southeast Asia by 2050 [23], and Fischer-Tropsch among the most viable routes [24]. A preliminary national estimate puts palm residues near 77% of Indonesian waste-based SAF potential [25]. We found no Kalimantan-wide residue tonnage, so the 6,800 kt remains a challenge input.")
 P("The physical constraints are real. Biomass clusters in West, Central and East Kalimantan, the airports sit far apart, and Tarakan is an island. A sample of 854 site pairs on OpenStreetMap gave a median road distance of 1.9 times great-circle, above the official 1.3. Older work on Central Kalimantan palm freight found road and river close to evenly used, with intermodal routes the cheapest generalised option [26].")
 
-H1("4. Dataset and assumptions")
+P("The platform helps that planner decide where to open plants, what size to build, which biomass sites to contract, how to route fuel, and when demand growth forces new capacity. Likely users are SAF producers, fuel distributors, airlines, airport operators, engineering consultancies and government planners. These are possible users, not existing customers.")
+
+H1("3. Official Airbus challenge requirements")
+P("The brief asks for a SAF supply chain across Kalimantan that minimises OpEx, CapEx and logistics while meeting demand at four airports: Supadio (PNK), Iskandar at Pangkalan Bun (PKN), Sepinggan (BPN) and Juwata (TRK). The chain runs biomass site, pre-processing depot, refinery, airport. The answer must give coordinates, facility sizes and routes. The update of 31 October at 12:45 fixed every open parameter and says it overrides the original where they differ.")
+
+H1("4. Data and assumptions")
 H2("Validation of the official data")
 table([
     ["Check", "Result"],
@@ -184,7 +188,7 @@ table([
     ["Refinery candidates", "On-land sites plus PNK, PKN, BPN", "Ours", "Tarakan excluded, as biomass cannot reach the island"],
     ["One refinery per site", "At most one", "Ours", "Depot modules may share a site"],
     ["Field depot radius", "60 km", "Ours", "Used only in the field design"],
-    ["Real uplift", "About 100 kt/yr", "Public", "Reality check only, see section 14"],
+    ["Real uplift", "About 100 kt/yr", "Public", "Reality check only, see section 13"],
 ], [3.8 * cm, 6.0 * cm, 1.6 * cm, 5.6 * cm])
 
 H1("5. Literature review")
@@ -214,7 +218,7 @@ if DC:
     P(f"We closed that margin computationally. With the six base-case refineries fixed, HiGHS solved the full three-tier model with depots at any site, shared between refineries, in integer modules. It proved {usd(DC['free_depot_cost'], 4)} ({DC['gap_pct']:.4f}% gap), the same as the co-located cost, with {len(DC['shared_depots'])} shared and {len(DC['remote_depots'])} remote depots.")
 P("The result needs metric distances, &rho;&tau;<sub>2</sub> at or above &tau;<sub>1</sub>, and this fleet. It reverses below a retention of 0.833, which is why the instruction to ignore moisture loss matters. A real depot that dries wet biomass could earn its place in the field, so this is a result about these inputs, not a general rule.")
 
-H1("7. Algorithm and solver selection")
+H1("7. Solver architecture")
 table([
     ["Method", "Assessment", "Decision"],
     ["General MILP solver (HiGHS)", "Reliable with a proven bound, but C++ and heavy to run live in a browser", "Kept as the independent check"],
@@ -231,10 +235,10 @@ P("Sites may be anywhere on land, so a final step alternates a location move and
 eq(r"\mathbf{p}^{(t+1)}=\left(\sum_m\frac{\omega_m\,\mathbf{p}_m}{\|\mathbf{p}^{(t)}-\mathbf{p}_m\|}\right)\left(\sum_m\frac{\omega_m}{\|\mathbf{p}^{(t)}-\mathbf{p}_m\|}\right)^{-1},\qquad \omega_m=\tau\times\mathrm{flow}_m", 0.46)
 P("A land mask rejects offshore moves. This step converges to a local optimum and carries no global proof.")
 
-H1("8. System architecture")
+H2("System architecture")
 P("The engine is a Rust library covering data, instance building, min-cost flow, search, refinement, audit, baselines, diagnostics and decision support, with 25 automated tests. A command-line tool runs batches and exports the model. A WebAssembly build of the same library runs inside the browser in a Web Worker, so the deployed site on GitHub Pages needs no server, account or API key. The page uses Leaflet for the map and Chart.js for charts. Python appears only in supporting scripts for data fetching, the HiGHS check and these documents.")
 
-H1("9. Optimisation results")
+H1("8. Optimisation results")
 table([
     ["Measure", "Value"],
     ["Total annual cost", f"{usd(base['objective'], 2)}"],
@@ -247,7 +251,7 @@ table([
     ["SAF delivered", f"{K['saf_kt']:,.0f} kt, 100% of demand"],
 ] + ([["HiGHS cost, same model", f"{usd(H['objective'], 2)} ({H['model_status']})"], ["HiGHS lower bound", f"{usd(H['bound'], 2)}"], ["HiGHS gap and time limit", f"{H['gap_pct']:.2f}%, {H['time_limit_s']:.0f} s"]] if H else []), [7 * cm, 10 * cm])
 
-H1("10. Facility location results")
+H1("9. Geographic network results")
 table([["Refinery", "Size", "Latitude", "Longitude", "Biomass kt", "SAF kt", "Used", "Nearest site"]] + [
     [r["id"], r["size"], f"{r['lat']:.4f}", f"{r['lon']:.4f}", f"{r['biomass_in']:,.0f}", f"{r['saf_kt']:,.0f}", f"{100 * r['utilisation']:.1f}%", r["near"]] for r in base["refineries"]
 ], [1.4 * cm, 1.2 * cm, 1.6 * cm, 1.7 * cm, 1.5 * cm, 1.1 * cm, 1.2 * cm, 7.3 * cm])
@@ -263,7 +267,7 @@ table([["Plant", "To road, m", "Named rivers", "Ports, piers", "Industrial", "Pr
     [r["id"], f"{r['road_m']:,}" if r["road_m"] is not None else "n/a", ", ".join(r.get("rivers", [])) or ("None mapped" if r["screened"] else "Not screened"), r.get("ports", "n/a"), r.get("industrial", "n/a"), ", ".join(r.get("protected", [])) or ("None mapped" if r["screened"] else "Not screened")] for r in SC["sites"]
 ], [1.3 * cm, 1.7 * cm, 5.6 * cm, 1.7 * cm, 1.7 * cm, 4.9 * cm])
 
-H1("11. Transport and material flows")
+H2("Transport and material flows")
 table([["From", "To", "SAF kt", "Distance km", "USD M/yr", "Mode"]] + [
     [f["src"], f["dst"], f"{f['kt']:,.1f}", f"{f['km']:,.0f}", f"{f['usd_m']:.2f}", f["mode"]] for f in base["flows_ra"]
 ], [2 * cm, 2 * cm, 2.4 * cm, 2.6 * cm, 2.4 * cm, 5.6 * cm])
@@ -271,7 +275,7 @@ P(f"Sites unused: {', '.join(K['sites_skipped'])}. These account for the 800 kt 
 t = base["trips"]
 table([["Leg", "Tonnes", "Small truck", "Trips", "Large truck", "Trips"]] + [[x["leg"], f"{x['tonnes']:,.0f}", f"{x['small_t']:.0f} t", f"{x['trips_small']:,.0f}", f"{x['large_t']:.0f} t", f"{x['trips_large']:,.0f}"] for x in t], [4.4 * cm, 3 * cm, 2 * cm, 2.8 * cm, 2 * cm, 2.8 * cm])
 
-H1("12. Cost analysis")
+H1("10. Cost and facility analysis")
 figure("cost.png", 15 * cm, "Figure 2. Annual cost by component, official base case.")
 table([
     ["Component", "USD M/yr", "Share"],
@@ -285,7 +289,7 @@ table([
 ], [8 * cm, 3 * cm, 3 * cm])
 P(f"Total CapEx is {usd(C['capex_total'], 0)}, of which refineries are {100 * C['capex_refineries'] / C['capex_total']:.1f}%. The objective excludes biomass purchase, as the update defines it, so USD {K['unit_cost_usd_t']:,.0f}/t is a delivered cost before feedstock. Readers should not compare it directly with a market SAF price.")
 
-H1("13. Baseline comparison")
+H1("11. Baseline comparison")
 figure("baseline.png", 12 * cm, "Figure 3. Annual cost on identical demand, distances and cost basis.")
 table([["Design", "USD M/yr", "Extra cost vs optimised", "Refineries", "Depots", "Truck-km, M/yr"]] + [
     ["Optimised", f"{B['optimised']['objective']:.1f}", "n/a", B["optimised"]["n_ref"], B["optimised"]["n_dep"], f"{B['optimised']['truck_km_m']:.1f}"],
@@ -306,7 +310,7 @@ ab = [
 table([["Measure", "A: at refinery, optimised", "B: in field, heuristic", "Change"]] + [[l, f"{f(base):,.{d}f}", f"{f(field):,.{d}f}", f"{f(field) - f(base):+,.{d}f}"] for l, f, d in ab], [7 * cm, 3.6 * cm, 3.4 * cm, 3 * cm])
 P(f"Design B gathers biomass within 60 km and hauls the long leg in larger trucks, so it moves {TK:.1f}% more tonne-km but needs an estimated {VK:.1f}% fewer truck-km. That estimate assumes large trucks with empty returns and includes the barge portion to Tarakan, so it is not a count of vehicle trips. A tonne-km tariff cannot see this benefit. B is a heuristic with no optimality proof, and it sits {100 * field['gap_to_bound']:.2f}% above the proven bound.")
 
-H1("14. Scenario and sensitivity analysis")
+H1("13. Scenario and sensitivity analysis")
 table([["Scenario", "Status", "USD M/yr", "USD/t", "Ref", "Dep", "Gap"]] + [
     [n, s["status"], f"{s['objective']:.1f}", f"{s['kpis']['unit_cost_usd_t']:,.0f}", s["kpis"]["n_refineries"], s["kpis"]["n_depots"], "No proof" if s["gap"] is None else f"{100 * s['gap']:.2f}%"]
     for n, s in [("Official base", base), ("High demand, +10%", hd), ("High transport, +50%", ht), ("All 6,800 kt, 340 kt per airport", allf), ("Field depots", field), ("OSRM road distances", road), ("Real uplift at 5% blend", real)]
@@ -332,11 +336,11 @@ table([["Case", "Result", "What the planner sees"]] + [
 ], [3 * cm, 2 * cm, 12 * cm])
 P(f"Demand can rise by at most {100 * (6800 / 6000 - 1):.1f}% before feedstock runs out. Yield below {1200 / 6800:.3f} makes 1,200 kt unreachable. The update allows yields of 15 to 25%, so the bottom of that range cannot meet official demand.")
 
-H1("15. Decision support method")
-P("The rubric asks for language models to handle explanation and for solvers to handle optimisation. We left language models out, so no model can invent a figure and no API key is needed. GitHub Pages cannot hold a private key, and a safe proxy would add an account, a cost and a demo failure point. A question routes by rule to an intent, and each intent reads named fields from a solver result and lists them under its answer. A refinery explanation includes a time-limited counterfactual solve with nearby sites closed. Questions about emissions, price or law are declined with a reason, because the model holds cost, mass and capacity only.")
+H1("14. AI decision support")
+P("KASCO's decision support is explainable and rule-based, with mathematical optimisation underneath. It uses no language model and no trained machine-learning model. That keeps every number reproducible and needs no API key. GitHub Pages cannot hold a private key, and a safe proxy would add an account, a cost and a demo failure point, so an optional language-model layer stays future work. A question routes by rule to an intent, and each intent reads named fields from a solver result and lists them under its answer. A refinery explanation includes a time-limited counterfactual solve with nearby sites closed. Questions about emissions, price or law are declined with a reason, because the model holds cost, mass and capacity only.")
 P("A what-if request is read clause by clause, so it can change several inputs at once, each with its own sign. It runs only when every part maps to a validated input, and otherwise it refuses and says which part it could not read. An audit found that the first version silently dropped a change and read the hyphen in 'what-if' as a minus sign. Both faults are fixed and covered by tests. The trade-off is that the system understands a narrower range of phrasing than a language model would.")
 
-H1("16. Validation and limitations")
+H1("15. Validation and optimality evidence")
 P(f"A separate audit module recomputes every balance and the objective from flow records, using its own distance calculation. All {len(base['validation'])} checks pass on the base case. Automated tests cover input data, capacities, mass balance, yield, demand, objective arithmetic, recalculation, infeasible cases, tampering and the what-if parser, and all {TESTS} pass. Tampering tests confirm the audit fails when a flow or objective is altered.")
 if H:
     P(f"As a second opinion, the Rust tool exports the co-located candidate-site model as a plain LP file and HiGHS {H['solver'].split()[-1]} solves it separately. HiGHS reaches {usd(H['objective'], 4)} with a lower bound of {usd(H['bound'], 2)} ({H['gap_pct']:.2f}% gap at its {H['time_limit_s']:.0f} s limit). The Rust cost on the same candidate sites is {usd(base['discrete_objective'], 4)} with a bound of {usd(base['bound'], 2)} ({100 * base['gap']:.2f}% gap in {base['runtime_s']:.0f} s). Two separate codes reached the same cost, which is strong evidence that the formulation and the search agree.")
@@ -345,6 +349,9 @@ if CK:
     P(f"A tighter bound is only useful if it is valid, so we tested it on {len(CK)} smaller demand levels that HiGHS can close. In each case the Rust bound must not exceed the HiGHS optimum.")
     table([["Total demand, kt", "Rust cost", "Rust bound", "HiGHS cost", "HiGHS bound", "Bound valid"]] + [[f"{r['total_demand_kt']:.0f}", f"{r['rust_cost']:.3f}", f"{r['rust_bound']:.3f}", f"{r['highs_cost']:.3f}", f"{r['highs_bound']:.3f}", "Yes" if r["bound_valid"] else "No"] for r in CK], [3 * cm, 2.8 * cm, 2.8 * cm, 2.8 * cm, 2.8 * cm, 2.6 * cm])
 P("Status of each result: the base case is feasible within a proven gap on candidate sites, the five small cases match a proven optimum, refined coordinates are locally refined, and the field design is a heuristic. We make no claim of global optimality for the unrestricted location problem.")
+
+H1("16. Limitations")
+P("The challenge's simplified inputs are necessary for a fair comparison, and they also shape the answer. Official demand is about 12 times our estimate of today's real jet use at these airports. The 80 biomass points are modelling inputs. A single tariff per leg hides road quality, river transport and seasonal access. Zero depot mass loss removes the main physical reason for field depots.")
 bullets([
     "The model is deterministic and annual, with no seasonality, storage or supply risk.",
     "Biomass price is outside the objective by instruction. Including it would favour the same sites only if prices are uniform.",
@@ -356,10 +363,19 @@ bullets([
     "Real uplift for PKN and TRK is scaled from passengers, and the PNK volume is reported for West Kalimantan as a whole.",
 ])
 
-H1("17. Conclusions")
+H1("17. Future development")
+P("These are possible next steps, not commitments or achievements.")
+bullets([
+    "<b>Secure language-model layer.</b> Natural-language requests would pass through a server-side proxy to structured parameters, the existing validator and the Rust solver. The model would never set costs, sites or results.",
+    "<b>Real-world validation.</b> Replace the tariffs and distances with road, river and port data, then screen sites for land tenure, peat and forest status with local stakeholders [2].",
+    "<b>Feedstock quality.</b> Replace the fixed yield with measured site data, including moisture and ash, as Li et al. recommend for logging residues [4]. Moisture alone decides whether depots belong in the field.",
+    "<b>Uncertainty.</b> Once supply data can support an uncertainty set, test robust optimisation in the style of Keyvandarian et al. [27].",
+])
+
+H1("18. Conclusions")
 P(f"A six-plant network at {usd(base['objective'], 0)} per year meets official demand, with the result checked by an independent audit and a second solver. The strongest levers are refinery cost and yield, and transport matters much less than a logistics framing suggests. KASCO's value lies in letting a planner test these questions in seconds, see where an idea fails and know how far an answer can be from the best possible. Given the right fleet, simple methods can get close, and we say so.")
 
-H1("18. References")
+H1("19. References")
 refs = [
     "Airbus and Acacia Hackathon Society (2026). Autonomous SG 2026 problem statements, and Summary of Updates, 31 October 2026, 12:45.",
     "Ng, R.T.L., Kurniawan, D., Wang, H., Mariska, B., Wu, W., Maravelias, C.T. (2018). Integrated framework for designing spatially explicit biofuel supply chains. Applied Energy 216, 116-131.",
@@ -397,11 +413,11 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(colors.HexColor("#52514e"))
-    canvas.drawString(2 * cm, 1.2 * cm, "Kalimantan SAF Optimiser, Wee Zhern Ray")
+    canvas.drawString(2 * cm, 1.2 * cm, "KASCO: Kalimantan SAF Supply Chain Optimiser. Wee Zhern Ray")
     canvas.drawRightString(A4[0] - 2 * cm, 1.2 * cm, str(doc.page))
     canvas.restoreState()
 
 
-doc = SimpleDocTemplate(str(REP / "Kalimantan_SAF_Technical_Report.pdf"), pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=1.8 * cm, bottomMargin=1.9 * cm, title="Kalimantan SAF Optimiser technical report", author="Wee Zhern Ray")
+doc = SimpleDocTemplate(str(REP / "KASCO_Technical_Report.pdf"), pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=1.8 * cm, bottomMargin=1.9 * cm, title="KASCO technical report", author="Wee Zhern Ray")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print("report written")
