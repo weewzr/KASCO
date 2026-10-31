@@ -24,15 +24,15 @@ KASCO is a working prototype for planning a Sustainable Aviation Fuel supply cha
 
 KASCO is a working prototype that optimises a Sustainable Aviation Fuel supply chain across Kalimantan on the official Airbus Challenge 3 data. A Rust solver running in the browser picks depot and refinery sites, routes biomass and SAF to four airports, and reports a proven gap. Users explore an interactive map, rerun scenarios and get explainable, solver-grounded answers. Base case: USD 890.1M a year, with all 1,200 kt of demand met.
 
-## Three-minute pitch script (450 words, about 180 seconds at 150 words a minute)
+## Three-minute pitch script (449 words, about 180 seconds at 150 words a minute)
 
 **Slide 1.** I'm Wee Zhern Ray, and this is KASCO, the Kalimantan SAF Supply Chain Optimiser, delivering explainable, data-driven decision intelligence for Airbus Challenge 3.
 
 **Slide 2.** Aviation is a hard-to-abate sector on the road to net zero, yet sustainable aviation fuel was only about 0.6 percent of jet fuel in 2025. The bottleneck is the feedstock-to-flight value chain. In Kalimantan, the challenge inputs spread biomass over 80 sites, and four airports each need 300 kilotonnes. One large refinery costs USD 765 million, so this is a high-stakes capital allocation decision before engineering starts. Airbus itself was reported studying biomass logistics in Indonesia with IPB University.
 
-**Slide 3.** KASCO is an end-to-end optimisation platform from biomass through depots and refineries to airports. A high-performance Rust engine, compiled to WebAssembly, runs mixed-integer optimisation in the browser, using Lagrangian bounds and exact min-cost flow. Planners get scenario intelligence and solver-grounded explanations. There is no black box: it uses no language model, so it cannot invent a number, and every result passes an independent audit.
+**Slide 3.** KASCO is an end-to-end optimisation platform from biomass through depots and refineries to airports. A high-performance Rust engine, compiled to WebAssembly, runs mixed-integer optimisation in the browser, using Lagrangian bounds and exact min-cost flow. Planners get scenario intelligence and solver-grounded explanations. There is no black box: the solver uses no language model, and every result passes an independent audit.
 
-**Slide 4.** This is the live, working MVP. You get an interactive geospatial network: click any site or route, switch scenarios, rerun the solver in seconds, and ask why a refinery was chosen. It is human-in-the-loop: if a question is unclear or outside the model, it refuses rather than guesses.
+**Slide 4.** This is the live, working MVP. You get an interactive geospatial network: click any site or route, switch scenarios, rerun the solver in seconds, and ask why a refinery was chosen. An optional Claude Opus 5.5 analyst answers plain-English questions from solver data. It is human-in-the-loop: if a question is unclear or outside the model, it refuses rather than guesses.
 
 **Slide 5.** On the official inputs, the base case costs USD 890 million a year, with six large refineries and 23 depot modules delivering 100 percent demand fulfilment across 1,200 kilotonnes. That is USD 61 to 77 million below two simple heuristics. For honest evaluation, a strong k-means benchmark given the same fleet reaches our network, so the real value is the optimality proof and the fleet choice in each scenario. HiGHS, an independent solver, reached the same cost, and we prove a 0.75 percent optimality gap on candidate sites.
 
@@ -40,4 +40,4 @@ KASCO is a working prototype that optimises a Sustainable Aviation Fuel supply c
 
 **Slide 7.** I'm a third-year Chemical Engineering student at NUS, minoring in Hydrogen and Low Carbon Technologies, with a specialisation in Safety and Sustainability, working where the energy transition meets applied optimisation.
 
-**Slide 8.** KASCO is a prototype today, with a scalable roadmap. Next comes a secure LLM layer, with the solver still in charge of every number. Then real-world validation with logistics and feedstock data, plus robust optimisation under uncertainty. The B2B opportunity spans SAF producers, airlines, fuel distributors, airports, consultancies and planning agencies. Thank you.
+**Slide 8.** KASCO is a prototype, with a scalable roadmap. Next comes secure hosted access to the analyst. Then real-world validation with logistics and feedstock data, plus robust optimisation under uncertainty. The B2B opportunity spans SAF producers, airlines, fuel distributors, airports, consultancies and planning agencies. Thank you.

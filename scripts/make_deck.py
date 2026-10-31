@@ -214,7 +214,7 @@ source(s, "Sources: IATA, 9 Dec 2025; QC Intelligence and Biofuels Digest, Aug 2
 
 # 3. Solution
 s = slide("KASCO turns one planning question into an audited network",
-          "KASCO follows material from biomass to depots, refineries and airports. A Rust solver compiled to WebAssembly picks sites and sizes in the browser and routes flows exactly. Planners can change assumptions, rerun the solver, and get explanations drawn from solver records. It uses no language model, so it cannot invent a number, and every result passes an independent audit.")
+          "KASCO follows material from biomass to depots, refineries and airports. A Rust solver compiled to WebAssembly picks sites and sizes in the browser and routes flows exactly. Planners can change assumptions, rerun the solver, and get explanations drawn from solver records. The solver uses no language model, and every result passes an independent audit.")
 chain(s, 0.6, 1.75, 12.1, ["Biomass", "Depots", "Refineries", "Airports"], [AQUA, YELLOW, ORANGE, BLUE], h=0.85, size=20)
 items = [("Mathematical optimisation", "Rust solver with a proven lower bound"), ("Geospatial analysis", "Interactive map of every site and route"), ("Scenario simulation", "Change inputs and rerun the real solver"), ("Explainable decision support", "Answers from solver records, or a refusal")]
 for i, (h, d) in enumerate(items):
@@ -222,7 +222,7 @@ for i, (h, d) in enumerate(items):
     card(s, x, 3.0, 2.9, 2.6)
     text(s, x + 0.2, 3.2, 2.5, 1.0, h, size=21, bold=True, color=TEAL)
     text(s, x + 0.2, 4.3, 2.5, 1.2, d, size=17, color=MUTED)
-text(s, 0.6, 5.95, 12.1, 0.5, "Runs in the browser from GitHub Pages. No server, no API key.", size=18, color=MUTED)
+text(s, 0.6, 5.95, 12.1, 0.5, "Runs in the browser from GitHub Pages with no server. The optional Claude Opus 5.5 analyst uses the viewer's own API key.", size=18, color=MUTED)
 
 # 4. MVP
 s = slide("A working prototype, live now",
@@ -349,7 +349,7 @@ s = slide("From Hackathon MVP to Scalable SAF Decision Intelligence",
           "KASCO is a prototype today. Next would come a secure language-model layer, with the solver still in charge of every number. Then road, port and feedstock data, robust optimisation and stakeholder validation. Likely users would be SAF producers, airlines, fuel distributors, airports, consultancies and planning agencies. This is an industrial planning tool, so there is no consumer story here. Thank you.")
 stages = [
     ("Stage 1", "Current MVP", ["Mathematical optimisation", "Interactive geospatial network", "Scenario simulation", "Explainable decision support"], FOREST),
-    ("Stage 2", "AI enhancement", ["Secure LLM integration", "Natural-language scenarios", "Possible ML site shortlisting", "Evidence-grounded reports"], TEAL),
+    ("Stage 2", "AI enhancement", ["Secure hosted LLM access", "Natural-language scenarios", "Possible ML site shortlisting", "Evidence-grounded reports"], TEAL),
     ("Stage 3", "Real-world validation", ["Road and port data", "Industrial site screening", "Feedstock-quality variability", "Robust optimisation, stakeholders"], BLUE),
     ("Stage 4", "Commercial potential", ["Airlines, SAF producers", "Fuel distributors, airports", "Engineering consultancies", "Government planning agencies"], YELLOW),
 ]
