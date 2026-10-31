@@ -2,7 +2,8 @@
 //!
 //! A question maps to an intent by keywords. Each intent reads fields from a solver
 //! result, what-if requests rerun the real solver, and questions the model cannot
-//! answer are declined with a reason.
+//! answer are declined with a reason. A what-if request runs only when every part of
+//! it maps to a validated input, so a partly understood question never runs silently.
 use crate::params::*;
 use crate::solution::Solution;
 use crate::{baseline, diag, run};
@@ -24,77 +25,418 @@ fn status_line(s: &Solution) -> String {
     match s.status.as_str() {
         "optimal" => format!("Solver status: optimal on candidate sites, gap {:.2}%.", 100.0 * s.gap.unwrap_or(0.0)),
         "feasible_gap" => format!("Solver status: feasible, gap {:.2}%. Better networks may exist within that margin.", 100.0 * s.gap.unwrap_or(0.0)),
+        "heuristic" => match s.gap_to_bound {
+            Some(g) => format!("Solver status: heuristic with no optimality proof, {:.2}% above the proven bound.", 100.0 * g),
+            None => "Solver status: heuristic with no optimality proof.".into(),
+        },
         other => format!("Solver status: {other}."),
     }
 }
 
-/// First number in front of a percent sign.
-fn pct(q: &str) -> Option<f64> {
-    let i = q.find('%')?;
-    let head = q[..i].trim_end();
-    let start = head.rfind(|c: char| !(c.is_ascii_digit() || c == '.')).map_or(0, |n| n + 1);
-    head[start..].parse().ok()
+/// Whole words of a clause, so "up" cannot match inside "supply".
+fn words(c: &str) -> Vec<&str> {
+    c.split(|ch: char| !ch.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).collect()
 }
 
-/// First number after a keyword.
-fn after(q: &str, key: &str) -> Option<f64> {
-    let tail = &q[q.find(key)? + key.len()..];
-    let start = tail.find(|c: char| c.is_ascii_digit() || c == '.')?;
-    let t = &tail[start..];
-    let end = t.find(|c: char| !(c.is_ascii_digit() || c == '.')).unwrap_or(t.len());
-    t[..end].parse().ok()
+/// +1 for a rise, -1 for a fall, 0 when the clause gives no direction or both.
+fn direction(c: &str) -> i32 {
+    let w = words(c);
+    let any = |exact: &[&str], stems: &[&str]| w.iter().any(|x| exact.contains(x) || stems.iter().any(|s| x.starts_with(s)));
+    let up = any(&["up", "more", "rise", "rises", "rose", "rising", "add", "adds"], &["increas", "rais", "grow", "higher", "hike"]);
+    let down = any(&["down", "less", "cut", "cuts", "fall", "falls", "fell", "falling"], &["decreas", "reduc", "drop", "lower", "declin", "shrink"]);
+    match (up, down) {
+        (true, false) => 1,
+        (false, true) => -1,
+        _ => 0,
+    }
 }
 
-/// Turns a what-if sentence into new inputs and a description.
-pub fn parse_change(q: &str, p: &Params) -> Option<(Params, String)> {
-    let ql = q.to_lowercase();
-    let has = |w: &[&str]| w.iter().any(|x| ql.contains(x));
-    if ql.contains("yield") {
-        if let Some(v) = after(&ql, "yield") {
-            let v = if v > 1.0 { v / 100.0 } else { v };
-            return Some((Params { yield_saf: v, ..p.clone() }, format!("yield set to {v:.2}")));
-        }
+/// First number in a clause, with any sign written directly in front of it.
+fn number(c: &str) -> Option<(f64, Option<f64>)> {
+    let b = c.as_bytes();
+    let start = (0..b.len()).find(|&i| b[i].is_ascii_digit() || (b[i] == b'.' && i + 1 < b.len() && b[i + 1].is_ascii_digit()))?;
+    let end = (start..b.len()).find(|&i| !(b[i].is_ascii_digit() || b[i] == b'.')).unwrap_or(b.len());
+    let v: f64 = c[start..end].trim_end_matches('.').parse().ok()?;
+    let sign = match start.checked_sub(1).map(|i| b[i]) {
+        Some(b'+') => Some(1.0),
+        Some(b'-') => Some(-1.0),
+        _ => None,
+    };
+    Some((v, sign))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Topic {
+    Demand(Option<usize>),
+    Tariff(Option<usize>),
+    Biomass,
+    Yield,
+    RoadFactor,
+    RefineryCapex,
+    DepotCapex,
+    Capex,
+    RefineryCap,
+    DepotCap,
+    RefineryVar,
+    DepotVar,
+    VarOpex,
+    FixedOpex,
+    CapexYears,
+    MaxRefineries,
+    Refinery,
+    Depot,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Val {
+    /// Multiply the input by this factor.
+    Factor(f64),
+    /// Set the input to this value.
+    Set(f64),
+}
+
+fn topic_of(c: &str) -> Option<Topic> {
+    let has = |w: &[&str]| w.iter().any(|x| c.contains(x));
+    let port = [["pnk", "pontianak", "supadio"], ["pkn", "pangkalan", "iskandar"], ["bpn", "balikpapan", "sepinggan"], ["trk", "tarakan", "juwata"]].iter().position(|names| names.iter().any(|n| c.contains(n)));
+    let leg = [["farm to depot", "site to depot", "first leg"], ["depot to refinery", "second leg", "depot-to-refinery"], ["refinery to airport", "last leg", "saf transport"]].iter().position(|names| names.iter().any(|n| c.contains(n)));
+    let (r, d) = (c.contains("refiner"), c.contains("depot"));
+    if leg.is_some() || has(&["transport", "tariff", "logistic", "truck", "freight", "haul", "shipping"]) {
+        return Some(Topic::Tariff(leg));
     }
-    if ql.contains("road factor") {
-        if let Some(v) = after(&ql, "road factor") {
-            return Some((Params { road_factor: v, ..p.clone() }, format!("road factor set to {v:.2}")));
-        }
+    if r && has(&["at most", "no more than", "max", "limit", "only"]) {
+        return Some(Topic::MaxRefineries);
     }
-    let sign = if has(&["fall", "drop", "decreas", "reduc", "cut", "lower", "down", "less", "-"]) { -1.0 } else { 1.0 };
-    let f = 1.0 + sign * pct(&ql)? / 100.0;
-    let label = format!("{:+.0}%", 100.0 * (f - 1.0));
-    if has(&["transport", "tariff", "logistic", "truck", "freight"]) {
-        return Some((Params { tariff_fd: p.tariff_fd * f, tariff_dr: p.tariff_dr * f, tariff_ra: p.tariff_ra * f, ..p.clone() }, format!("all tariffs changed by {label}")));
+    if has(&["road factor", "distance", "circuity"]) {
+        return Some(Topic::RoadFactor);
+    }
+    if c.contains("yield") {
+        return Some(Topic::Yield);
+    }
+    if has(&["fixed opex", "fixed cost", "fixed operating"]) {
+        return Some(Topic::FixedOpex);
+    }
+    if has(&["capex life", "plant life", "capex years", "depreciation"]) {
+        return Some(Topic::CapexYears);
+    }
+    if has(&["variable opex", "variable cost", "variable operating"]) {
+        return Some(if r { Topic::RefineryVar } else if d { Topic::DepotVar } else { Topic::VarOpex });
+    }
+    if c.contains("capacity") {
+        return if r { Some(Topic::RefineryCap) } else if d { Some(Topic::DepotCap) } else { None };
+    }
+    if has(&["capex", "capital", "cost", "price", "construction"]) {
+        if r {
+            return Some(Topic::RefineryCapex);
+        }
+        if d {
+            return Some(Topic::DepotCapex);
+        }
+        if has(&["capex", "capital"]) {
+            return Some(Topic::Capex);
+        }
     }
     if has(&["biomass", "feedstock", "supply"]) {
-        return Some((Params { biomass_multiplier: p.biomass_multiplier * f, ..p.clone() }, format!("biomass changed by {label}")));
+        return Some(Topic::Biomass);
     }
-    if has(&["refiner"]) {
-        return Some((Params { refinery_capex: p.refinery_capex.map(|v| v * f), ..p.clone() }, format!("refinery CapEx changed by {label}")));
+    if c.contains("demand") {
+        return Some(Topic::Demand(port));
     }
-    if has(&["depot"]) {
-        return Some((Params { depot_capex: p.depot_capex.map(|v| v * f), ..p.clone() }, format!("depot CapEx changed by {label}")));
+    if r {
+        return Some(Topic::Refinery);
     }
-    if has(&["demand"]) {
-        return Some((Params { demand_multiplier: p.demand_multiplier * f, ..p.clone() }, format!("demand changed by {label}")));
+    if d {
+        return Some(Topic::Depot);
     }
     None
 }
 
-fn what_if(q: &str, s: &Solution, p: &Params) -> Answer {
-    let Some((new, desc)) = parse_change(q, p) else {
-        return say("what_if", "I could not map that to a solver input. Try: demand up 10%, transport up 30%, biomass down 10%, yield 0.25, road factor 1.9, refinery cost up 15%.".into(), &[]);
+/// The amount a clause asks for. Direction is required for a percentage, except for
+/// inputs that are themselves shares, where a bare figure sets the value.
+fn value_of(c: &str, t: Option<Topic>) -> Option<Val> {
+    let w = words(c);
+    let stem = |s: &str| w.iter().any(|x| x.starts_with(s));
+    if stem("doubl") {
+        return Some(Val::Factor(2.0));
+    }
+    if stem("tripl") {
+        return Some(Val::Factor(3.0));
+    }
+    if stem("halv") || w.contains(&"half") {
+        return Some(Val::Factor(0.5));
+    }
+    let (v, sign) = number(c)?;
+    let pct = c.contains('%') || c.contains("percent");
+    let dir = direction(c);
+    if pct {
+        let s = sign.or(if dir != 0 { Some(dir as f64) } else { None });
+        return match (s, t) {
+            (Some(s), _) => Some(Val::Factor(1.0 + s * v / 100.0)),
+            (None, Some(Topic::Yield | Topic::FixedOpex)) => Some(Val::Set(v / 100.0)),
+            _ => None,
+        };
+    }
+    if dir != 0 || sign.is_some() {
+        return None;
+    }
+    match t {
+        Some(Topic::Yield | Topic::RoadFactor | Topic::FixedOpex | Topic::CapexYears | Topic::MaxRefineries | Topic::RefineryCap | Topic::DepotCap | Topic::Demand(_)) => Some(Val::Set(v)),
+        _ => None,
+    }
+}
+
+fn pct_label(f: f64) -> String {
+    format!("{:+.1}%", 100.0 * (f - 1.0))
+}
+
+/// Applies one change. Returns its description, or None if the amount does not fit.
+fn apply(p: &mut Params, t: Topic, v: Val, c: &str) -> Option<String> {
+    let sizes: Vec<usize> = if c.contains("small") { vec![SMALL] } else if c.contains("large") { vec![LARGE] } else { vec![SMALL, LARGE] };
+    let size = if sizes.len() == 1 { format!("{} ", SIZES[sizes[0]]) } else { String::new() };
+    let scale = |a: &mut [f64; 2], f: f64| sizes.iter().for_each(|&s| a[s] *= f);
+    let set = |a: &mut [f64; 2], x: f64| sizes.iter().for_each(|&s| a[s] = x);
+    let pair = |a: &mut [f64; 2], label: &str, v: Val| match v {
+        Val::Factor(f) => {
+            scale(a, f);
+            format!("{size}{label} {}", pct_label(f))
+        }
+        Val::Set(x) => {
+            set(a, x);
+            format!("{size}{label} set to {x:.0}")
+        }
     };
-    let t = run(&Params { time_limit_s: 6.0, ..new.clone() });
+    let text = match t {
+        Topic::Demand(port) => match (v, port) {
+            (Val::Factor(f), None) => {
+                p.demand_multiplier *= f;
+                format!("demand {}", pct_label(f))
+            }
+            (Val::Factor(f), Some(a)) => {
+                p.demand[a] *= f;
+                format!("{} demand {}", AIRPORTS[a], pct_label(f))
+            }
+            (Val::Set(x), Some(a)) => {
+                p.demand[a] = x / p.demand_multiplier;
+                format!("{} demand set to {x:.0} kt", AIRPORTS[a])
+            }
+            (Val::Set(x), None) => {
+                let each = if c.contains("per airport") || c.contains("each") { x } else { x / 4.0 };
+                p.demand = [each / p.demand_multiplier; 4];
+                format!("demand set to {each:.0} kt per airport")
+            }
+        },
+        Topic::Tariff(leg) => {
+            let Val::Factor(f) = v else { return None };
+            match leg {
+                Some(0) => p.tariff_fd *= f,
+                Some(1) => p.tariff_dr *= f,
+                Some(_) => p.tariff_ra *= f,
+                None => {
+                    p.tariff_fd *= f;
+                    p.tariff_dr *= f;
+                    p.tariff_ra *= f;
+                }
+            }
+            let name = ["first-leg tariff", "second-leg tariff", "last-leg tariff"];
+            format!("{} {}", leg.map_or("all tariffs", |l| name[l]), pct_label(f))
+        }
+        Topic::Biomass => {
+            let Val::Factor(f) = v else { return None };
+            p.biomass_multiplier *= f;
+            format!("biomass {}", pct_label(f))
+        }
+        Topic::Yield => {
+            p.yield_saf = match v {
+                Val::Factor(f) => p.yield_saf * f,
+                Val::Set(x) => {
+                    if x > 1.0 {
+                        x / 100.0
+                    } else {
+                        x
+                    }
+                }
+            };
+            format!("yield set to {:.3}", p.yield_saf)
+        }
+        Topic::RoadFactor => {
+            p.road_factor = match v {
+                Val::Factor(f) => p.road_factor * f,
+                Val::Set(x) => x,
+            };
+            format!("road factor set to {:.2}", p.road_factor)
+        }
+        Topic::FixedOpex => {
+            p.fixed_opex_frac = match v {
+                Val::Factor(f) => p.fixed_opex_frac * f,
+                Val::Set(x) => {
+                    if x >= 1.0 {
+                        x / 100.0
+                    } else {
+                        x
+                    }
+                }
+            };
+            format!("fixed OpEx set to {:.1}% of CapEx", 100.0 * p.fixed_opex_frac)
+        }
+        Topic::CapexYears => {
+            p.capex_years = match v {
+                Val::Factor(f) => p.capex_years * f,
+                Val::Set(x) => x,
+            };
+            format!("CapEx life set to {:.0} years", p.capex_years)
+        }
+        Topic::MaxRefineries => {
+            let Val::Set(x) = v else { return None };
+            p.max_refineries = x as usize;
+            format!("at most {} refineries", p.max_refineries)
+        }
+        Topic::RefineryCapex => pair(&mut p.refinery_capex, "refinery CapEx", v),
+        Topic::DepotCapex => pair(&mut p.depot_capex, "depot CapEx", v),
+        Topic::RefineryCap => pair(&mut p.refinery_cap, "refinery capacity", v),
+        Topic::DepotCap => pair(&mut p.depot_cap, "depot capacity", v),
+        Topic::RefineryVar => pair(&mut p.refinery_var, "refinery variable OpEx", v),
+        Topic::DepotVar => pair(&mut p.depot_var, "depot variable OpEx", v),
+        Topic::VarOpex => {
+            let Val::Factor(f) = v else { return None };
+            p.refinery_var = p.refinery_var.map(|x| x * f);
+            p.depot_var = p.depot_var.map(|x| x * f);
+            format!("variable OpEx {}", pct_label(f))
+        }
+        Topic::Capex => {
+            let Val::Factor(f) = v else { return None };
+            p.refinery_capex = p.refinery_capex.map(|x| x * f);
+            p.depot_capex = p.depot_capex.map(|x| x * f);
+            format!("all CapEx {}", pct_label(f))
+        }
+        Topic::Refinery | Topic::Depot => return None,
+    };
+    Some(text)
+}
+
+/// Rejects inputs that would make the model meaningless before any solve starts.
+fn in_range(p: &Params) -> Result<(), String> {
+    let positive = p.demand.iter().all(|d| *d >= 0.0) && p.total_demand() > 0.0;
+    if !positive {
+        return Err("demand must stay above zero".into());
+    }
+    if !(p.yield_saf > 0.0 && p.yield_saf <= 1.0) {
+        return Err("yield must be between 0 and 1".into());
+    }
+    if p.road_factor < 1.0 {
+        return Err("road factor cannot be below 1, since roads are never shorter than a straight line".into());
+    }
+    if p.biomass_multiplier <= 0.0 || [p.tariff_fd, p.tariff_dr, p.tariff_ra].iter().any(|t| *t < 0.0) {
+        return Err("biomass must stay positive and tariffs cannot be negative".into());
+    }
+    if p.refinery_cap.iter().chain(&p.depot_cap).any(|c| *c <= 0.0) || p.refinery_capex.iter().chain(&p.depot_capex).any(|c| *c < 0.0) {
+        return Err("capacities must stay positive and CapEx cannot be negative".into());
+    }
+    if p.capex_years < 1.0 || !(0.0..1.0).contains(&p.fixed_opex_frac) {
+        return Err("CapEx life must be at least 1 year and fixed OpEx below 100%".into());
+    }
+    Ok(())
+}
+
+pub struct Parsed {
+    pub params: Params,
+    pub applied: Vec<String>,
+    pub unmapped: Vec<String>,
+    pub invalid: Option<String>,
+}
+
+/// Reads a what-if sentence clause by clause. Each clause keeps its own sign and amount.
+pub fn parse_changes(q: &str, p: &Params) -> Parsed {
+    let mut text = format!(" {} ", q.to_lowercase().replace("what-if", "what if").replace("per cent", "percent"));
+    for lead in ["what happens if", "what would happen if", "what if", "suppose that", "suppose", "rerun with", "rerun"] {
+        text = text.replace(lead, " ");
+    }
+    for sep in [" while ", " and ", " but ", " plus ", " also ", " as well as ", " with ", " at the same time ", ",", ";", "?", "!"] {
+        text = text.replace(sep, "|");
+    }
+    let mut out = Parsed { params: p.clone(), applied: vec![], unmapped: vec![], invalid: None };
+    let mut pending: Vec<(Topic, String)> = vec![];
+    for raw in text.split('|') {
+        let c = raw.trim().trim_end_matches('.').trim();
+        if c.is_empty() {
+            continue;
+        }
+        let t = topic_of(c);
+        let v = value_of(c, t);
+        match (t, v) {
+            (None, None) => {
+                if number(c).is_some() || direction(c) != 0 {
+                    out.unmapped.push(c.to_string());
+                }
+            }
+            (Some(t), None) => pending.push((t, c.to_string())),
+            (t, Some(v)) => {
+                if let Some(t) = t {
+                    pending.push((t, c.to_string()));
+                }
+                if pending.is_empty() {
+                    out.unmapped.push(c.to_string());
+                    continue;
+                }
+                // "Refinery and depot CapEx up 10%" shares the amount and the attribute.
+                let attr = pending.last().map(|x| x.0);
+                for (pt, pc) in pending.drain(..) {
+                    let pt = match (pt, attr) {
+                        (Topic::Refinery, Some(Topic::DepotCapex)) => Topic::RefineryCapex,
+                        (Topic::Depot, Some(Topic::RefineryCapex)) => Topic::DepotCapex,
+                        (Topic::Refinery, Some(Topic::DepotCap)) => Topic::RefineryCap,
+                        (Topic::Depot, Some(Topic::RefineryCap)) => Topic::DepotCap,
+                        (x, _) => x,
+                    };
+                    match apply(&mut out.params, pt, v, &pc) {
+                        Some(s) => out.applied.push(s),
+                        None => out.unmapped.push(pc),
+                    }
+                }
+            }
+        }
+    }
+    out.unmapped.extend(pending.into_iter().map(|x| x.1));
+    if !out.applied.is_empty() {
+        out.invalid = in_range(&out.params).err();
+    }
+    out
+}
+
+/// Turns a what-if sentence into new inputs, only if all of it was understood.
+pub fn parse_change(q: &str, p: &Params) -> Option<(Params, String)> {
+    let r = parse_changes(q, p);
+    if r.applied.is_empty() || !r.unmapped.is_empty() || r.invalid.is_some() {
+        return None;
+    }
+    Some((r.params, r.applied.join("; ")))
+}
+
+fn what_if(q: &str, s: &Solution, p: &Params) -> Answer {
+    let r = parse_changes(q, p);
+    let refuse = |text: String| Answer { intent: "what_if".into(), text, sources: vec![], declined: true };
+    if let Some(why) = &r.invalid {
+        return refuse(format!("I did not run the solver, because {why}. Requested: {}.", r.applied.join("; ")));
+    }
+    if !r.unmapped.is_empty() {
+        let got = if r.applied.is_empty() { String::new() } else { format!(" I understood: {}.", r.applied.join("; ")) };
+        return refuse(format!(
+            "I did not run the solver, because I could not map this part to an input with a clear direction and amount: \"{}\".{got} Try: demand up 10%, transport down 5%, refinery CapEx up 15%, biomass down 10%, yield 0.25, road factor 1.9.",
+            r.unmapped.join("\", \"")
+        ));
+    }
+    if r.applied.is_empty() {
+        return refuse("I could not map that to a solver input. Try: demand up 10%, transport down 5%, refinery CapEx up 15%, biomass down 10%, yield 0.25, road factor 1.9.".into());
+    }
+    let desc = r.applied.join("; ");
+    let t = run(&Params { time_limit_s: 6.0, ..r.params.clone() });
     if !t.has_network() {
         let rows: Vec<String> = t.diagnostics.iter().map(|f| format!("- **{}**: {} Fix: {}", f.limit, f.reason, f.fix)).collect();
-        return say("what_if", format!("Change applied: {desc}. The solver reports **infeasible**.\n\n{}", rows.join("\n")), &["solver rerun", "diagnostics"]);
+        return say("what_if", format!("Changes applied: {desc}. The solver reports **infeasible**.\n\n{}", rows.join("\n")), &["solver rerun", "diagnostics"]);
     }
     let (o0, o1) = (s.objective.unwrap_or(0.0), t.objective.unwrap_or(0.0));
     say(
         "what_if",
         format!(
-            "Change applied: {desc}. The solver reran with this input.\n\n- Total cost: USD {o0:.1}M to USD {o1:.1}M per year ({:+.1}%)\n- Unit cost: USD {:.0}/t to USD {:.0}/t SAF\n- Refineries: {} to {}\n- Depots: {} to {}\n- Biomass used: {:.0} kt to {:.0} kt\n\n{}",
+            "Changes applied: {desc}. The solver reran with these inputs.\n\n- Total cost: USD {o0:.1}M to USD {o1:.1}M per year ({:+.1}%)\n- Unit cost: USD {:.0}/t to USD {:.0}/t SAF\n- Refineries: {} to {}\n- Depots: {} to {}\n- Biomass used: {:.0} kt to {:.0} kt\n\n{}",
             100.0 * (o1 / o0 - 1.0), s.kpis.unit_cost_usd_t, t.kpis.unit_cost_usd_t, s.kpis.n_refineries, t.kpis.n_refineries,
             s.kpis.n_depots, t.kpis.n_depots, s.kpis.biomass_used_kt, t.kpis.biomass_used_kt, status_line(&t)
         ),
@@ -123,7 +465,7 @@ fn why_refinery(q: &str, s: &Solution, p: &Params) -> Answer {
     let base = s.discrete_objective.or(s.objective).unwrap_or(0.0);
     if let Some(o) = alt.objective {
         lines.push(format!(
-            "Counterfactual solve: closing its 3 nearest candidates ({}) gives USD {o:.1}M per year on candidate sites, a change of USD {:+.1}M per year against USD {base:.1}M.",
+            "Counterfactual solve, limited to 5 s: closing its 3 nearest candidates ({}) gives USD {o:.1}M per year on candidate sites, a change of USD {:+.1}M per year against USD {base:.1}M.",
             forbid.join(", "), o - base
         ));
     }
@@ -148,7 +490,7 @@ fn depots(s: &Solution, p: &Params) -> Answer {
     );
     if s.depots.iter().any(|d| d.colocated) {
         t.push_str(&format!(
-            "\n\nDepots sit at refineries because the second leg costs USD {:.2}/t/km against USD {:.2}/t/km for the first, and depots lose no mass. Any depot away from its refinery adds cost by the triangle inequality. Below a retention of {:.3} this reverses.",
+            "\n\nDepots sit at refineries because the second leg costs USD {:.2}/t/km against USD {:.2}/t/km for the first, and depots lose no mass under the official inputs. On the official six-plant fleet, HiGHS found no cheaper depot layout with depots free to go anywhere. Below a retention of {:.3} this reverses, so real wet feedstock could change the answer.",
             p.tariff_dr, p.tariff_fd, p.tariff_fd / p.tariff_dr
         ));
     }
@@ -156,7 +498,7 @@ fn depots(s: &Solution, p: &Params) -> Answer {
 }
 
 fn capacity(q: &str, s: &Solution) -> Answer {
-    let th = pct(q).map_or(0.90, |v| v / 100.0);
+    let th = number(q).filter(|_| q.contains('%')).map_or(0.90, |n| n.0 / 100.0);
     let mut hits: Vec<(String, f64)> = s.refineries.iter().filter(|r| r.utilisation >= th).map(|r| (format!("refinery {} ({})", r.id, r.size), r.utilisation)).collect();
     hits.extend(s.depots.iter().filter(|d| d.utilisation >= th).map(|d| (format!("depot group {} ({} x{})", d.id, d.size, d.count), d.utilisation)));
     hits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
@@ -165,6 +507,22 @@ fn capacity(q: &str, s: &Solution) -> Answer {
     }
     let rows: Vec<String> = hits.iter().take(12).map(|(n, u)| format!("- {n}: {:.1}%", 100.0 * u)).collect();
     say("capacity", format!("{} facilities are at or above {:.0}%:\n\n{}", hits.len(), 100.0 * th, rows.join("\n")), &["refineries.utilisation", "depots.utilisation"])
+}
+
+fn unused(s: &Solution) -> Answer {
+    let k = &s.kpis;
+    let spare = k.biomass_available_kt - k.biomass_used_kt;
+    if k.sites_skipped.is_empty() {
+        return say("unused", format!("Every site ships biomass. {:.0} kt of supply is left over across them.", spare), &["kpis.sites_skipped"]);
+    }
+    say(
+        "unused",
+        format!(
+            "{} sites ship nothing: {}. Demand needs {:.0} kt of the {:.0} kt available, so the solver leaves the {:.0} kt that costs most to bring in.",
+            k.sites_skipped.len(), k.sites_skipped.join(", "), k.biomass_used_kt, k.biomass_available_kt, spare
+        ),
+        &["kpis.sites_skipped", "kpis.biomass_used_kt"],
+    )
 }
 
 fn infeasible(s: &Solution, p: &Params) -> Answer {
@@ -185,6 +543,9 @@ fn baseline_cmp(s: &Solution, p: &Params) -> Answer {
             rows.push(format!("- {label}: USD {c:.1}M per year. The optimised network saves USD {:.1}M per year ({:.1}%).", c - o, 100.0 * (c - o) / c));
         }
     }
+    if let Some(k) = baseline::kmeans(p, 30) {
+        rows.push(format!("- K-means sites with exact flows, a stronger benchmark: best USD {:.1}M, median USD {:.1}M per year. The optimised network saves USD {:.1}M to {:.1}M per year.", k.best, k.median, k.best - o, k.median - o));
+    }
     say("baseline", format!("Optimised network: USD {o:.1}M per year on the same demand and cost basis.\n\n{}", rows.join("\n")), &["baselines", "objective"])
 }
 
@@ -201,6 +562,7 @@ fn cost(s: &Solution, p: &Params) -> Answer {
 }
 
 const OUT_OF_SCOPE: [&str; 15] = ["carbon", "co2", "ghg", "emission", "lifecycle", "selling price", "profit", "npv", "irr", "revenue", "weather", "flood", "deforest", "legal", "permit"];
+const CHANGE_WORDS: [&str; 8] = ["demand", "transport", "biomass", "tariff", "feedstock", "capex", "cost up", "cost down"];
 
 pub fn answer(question: &str, s: &Solution) -> Answer {
     let q = question.trim().to_lowercase();
@@ -221,11 +583,14 @@ pub fn answer(question: &str, s: &Solution) -> Answer {
     if has(&["infeasib", "no solution", "not feasible"]) {
         return infeasible(s, &p);
     }
-    if has(&["what happens", "what if", "suppose", "rerun"]) || (q.contains('%') && has(&["demand", "transport", "biomass", "tariff", "cost up", "cost down"])) {
+    if has(&["what happens", "what if", "what-if", "what would happen", "suppose", "rerun"]) || q.starts_with("if ") || (q.contains('%') && has(&CHANGE_WORDS)) {
         return if net { what_if(&q, s, &p) } else { say("what_if", "This scenario has no network to compare with. Switch to a feasible scenario first.".into(), &[]) };
     }
     if !net {
         return infeasible(s, &p);
+    }
+    if has(&["unused", "skipped", "skip", "not used", "left out", "ship nothing"]) {
+        return unused(s);
     }
     if has(&["why"]) && has(&["refiner", "site", "located", "selected", "chosen"]) {
         return why_refinery(question, s, &p);
@@ -248,7 +613,7 @@ pub fn answer(question: &str, s: &Solution) -> Answer {
     Answer {
         intent: "unmatched".into(),
         declined: true,
-        text: "That question is outside what I can trace to solver output. I can explain refinery choices, route costs, depot sizes, capacity use, infeasibility, baseline savings and what-if changes.".into(),
+        text: "That question is outside what I can trace to solver output. I can explain refinery choices, route costs, depot sizes, unused sites, capacity use, infeasibility, baseline savings and what-if changes.".into(),
         sources: vec![],
     }
 }

@@ -1,8 +1,14 @@
 //! Named scenarios shipped with the app. Every one is solved, none is hard-coded.
 use crate::params::Params;
 
-/// Our estimate of real jet uplift in kt/yr, from Pertamina volumes and DGCA passengers.
-pub const REAL_UPLIFT_KT: [f64; 4] = [22.48, 5.21, 64.82, 7.18];
+const UPLIFT: &str = include_str!("../../../data/real_uplift.csv");
+
+/// Estimated real jet uplift in kt/yr, derived by scripts/fetch_context.py. Used only
+/// in the labelled reality-check scenario.
+pub fn real_uplift_kt() -> [f64; 4] {
+    let v: Vec<f64> = UPLIFT.lines().skip(1).filter_map(|l| l.trim().split(',').nth(1)?.parse().ok()).collect();
+    [v[0], v[1], v[2], v[3]]
+}
 
 pub fn all() -> Vec<(&'static str, Params)> {
     let base = Params::default;
@@ -17,7 +23,7 @@ pub fn all() -> Vec<(&'static str, Params)> {
         ("max_five_refineries", named("Infeasible: at most 5 refineries", Params { max_refineries: 5, ..base() })),
         ("all_feedstock", named("All 6,800 kt used, 340 kt per airport", Params { demand: [340.0; 4], ..base() })),
         ("road_distance", named("Reality check: OSRM road distances", Params { distance_basis: "road".into(), refine: false, ..base() })),
-        ("real_blend", named("Reality check: real uplift at 5% blend", Params { demand: REAL_UPLIFT_KT.map(|u| u * 0.05), ..base() })),
+        ("real_blend", named("Reality check: real uplift at 5% blend", Params { demand: real_uplift_kt().map(|u| u * 0.05), ..base() })),
     ]
 }
 

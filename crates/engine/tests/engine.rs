@@ -1,6 +1,6 @@
 //! Every test here runs the real engine on the official data.
 use saf_engine::data::{haversine, network, on_land};
-use saf_engine::explain::{answer, parse_change};
+use saf_engine::explain::{answer, parse_change, parse_changes};
 use saf_engine::flow::Mcf;
 use saf_engine::params::*;
 use saf_engine::problem::*;
@@ -239,6 +239,128 @@ fn explainer_reruns_the_solver_for_what_if() {
     assert!(a.text.contains("reran"));
     let b = answer("What happens if demand increases by 20%?", base());
     assert!(b.text.contains("infeasible"));
+}
+
+#[test]
+fn parser_applies_every_change_in_a_sentence() {
+    let p = Params::default();
+    let q = "What happens if SAF demand increases by 10% while refinery CapEx increases by 15%?";
+    let r = parse_changes(q, &p);
+    assert_eq!(r.applied.len(), 2, "{:?}", r.applied);
+    assert!(r.unmapped.is_empty());
+    assert!((r.params.demand_multiplier - 1.10).abs() < 1e-9);
+    assert!((r.params.refinery_capex[LARGE] - 765.0 * 1.15).abs() < 1e-9);
+    assert!((r.params.refinery_capex[SMALL] - 480.0 * 1.15).abs() < 1e-9);
+}
+
+#[test]
+fn parser_keeps_sign_per_clause() {
+    let p = Params::default();
+    let r = parse_changes("what if transport costs rise 20% and demand falls 5%", &p);
+    assert!((r.params.tariff_fd - 0.12).abs() < 1e-9);
+    assert!((r.params.demand_multiplier - 0.95).abs() < 1e-9);
+    let r = parse_changes("demand up 10%, biomass down 5%, yield 0.25", &p);
+    assert_eq!(r.applied.len(), 3);
+    assert!((r.params.biomass_multiplier - 0.95).abs() < 1e-9);
+    assert_eq!(r.params.yield_saf, 0.25);
+}
+
+#[test]
+fn hyphen_in_what_if_is_not_a_minus_sign() {
+    let p = Params::default();
+    let r = parse_changes("What-if demand increases by 10%", &p);
+    assert!((r.params.demand_multiplier - 1.10).abs() < 1e-9);
+    let r = parse_changes("demand -5%", &p);
+    assert!((r.params.demand_multiplier - 0.95).abs() < 1e-9);
+}
+
+#[test]
+fn direction_words_do_not_match_inside_other_words() {
+    let p = Params::default();
+    let r = parse_changes("what if biomass supply is cut by 10%", &p);
+    assert!((r.params.biomass_multiplier - 0.9).abs() < 1e-9);
+    let r = parse_changes("what if feedstock supply rises 10%", &p);
+    assert!((r.params.biomass_multiplier - 1.1).abs() < 1e-9);
+}
+
+#[test]
+fn shared_amounts_and_scaling_words_are_understood() {
+    let p = Params::default();
+    let r = parse_changes("demand and transport up 10%", &p);
+    assert!((r.params.demand_multiplier - 1.1).abs() < 1e-9 && (r.params.tariff_ra - 0.088).abs() < 1e-9);
+    let r = parse_changes("refinery and depot capex up 10%", &p);
+    assert!((r.params.refinery_capex[0] - 528.0).abs() < 1e-9 && (r.params.depot_capex[1] - 4.95).abs() < 1e-9, "{:?}", r.applied);
+    let r = parse_changes("what if small refinery capex doubles", &p);
+    assert_eq!(r.params.refinery_capex, [960.0, 765.0]);
+    let r = parse_changes("demand at Tarakan up 10%", &p);
+    assert!((r.params.demand[ISLAND_AIRPORT] - 330.0).abs() < 1e-9 && r.params.demand[0] == 300.0);
+}
+
+#[test]
+fn parser_refuses_rather_than_guessing() {
+    let p = Params::default();
+    let cases = ["what if demand changes", "what if transport 30%", "what if the weather gets 20% worse and demand rises 5%"];
+    for q in cases {
+        let r = parse_changes(q, &p);
+        assert!(!r.unmapped.is_empty(), "{q}: {:?}", r.applied);
+        assert!(parse_change(q, &p).is_none(), "{q}");
+    }
+    assert!(parse_changes("what if yield 1.5%", &p).invalid.is_none());
+    assert!(parse_changes("what if road factor 0.5", &p).invalid.is_some());
+}
+
+#[test]
+fn partly_understood_question_does_not_run_the_solver() {
+    let a = answer("what if demand rises 5% and airline morale improves 10%", base());
+    assert!(a.declined, "{}", a.text);
+    assert!(a.text.contains("did not run"));
+    assert!(a.text.contains("demand +5.0%"));
+}
+
+#[test]
+fn explainer_runs_your_two_change_example_through_the_solver() {
+    let a = answer("What happens if SAF demand increases by 10% while refinery CapEx increases by 15%?", base());
+    assert_eq!(a.intent, "what_if");
+    assert!(a.text.contains("demand +10.0%") && a.text.contains("refinery CapEx +15.0%"), "{}", a.text);
+    assert!(a.text.contains("reran"));
+}
+
+#[test]
+fn explainer_lists_unused_sites() {
+    let a = answer("Why are some sites unused?", base());
+    assert_eq!(a.intent, "unused");
+    assert!(a.text.contains(&base().kpis.sites_skipped[0]));
+}
+
+#[test]
+fn heuristic_design_reports_no_proven_gap() {
+    let f = run(&Params { depot_mode: "field".into(), time_limit_s: 4.0, ..Default::default() });
+    assert_eq!(f.status, "heuristic");
+    assert!(f.gap.is_none());
+    assert!(f.gap_to_bound.unwrap() > base().gap.unwrap());
+}
+
+#[test]
+fn optimal_label_requires_the_target_gap() {
+    let s = base();
+    assert_eq!(s.status == "optimal", s.gap.unwrap() <= Params::default().gap_target);
+}
+
+#[test]
+fn tonne_km_and_vehicle_km_are_reported_separately() {
+    let k = &base().kpis;
+    let f = |v: &Vec<saf_engine::solution::Flow>| v.iter().map(|x| x.kt * x.km).sum::<f64>();
+    let s = base();
+    assert!((k.tonne_km_bn - (f(&s.flows_fd) + f(&s.flows_dr) + f(&s.flows_ra)) / 1e6).abs() < 1e-9);
+    assert!(k.truck_km_m > 0.0);
+}
+
+#[test]
+fn kmeans_benchmark_is_valid_and_not_cheaper_than_the_search() {
+    let k = baseline::kmeans(&Params::default(), 5).unwrap();
+    assert!(k.best_valid);
+    assert!(k.best >= base().objective.unwrap() - 1e-6);
+    assert!(k.median >= k.best);
 }
 
 #[test]

@@ -19,7 +19,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#eda100"
 THEMES = {
     "light": dict(bg="#ffffff", land="#eeeeea", coast="#c9c8c0", text="#0b0b0b", muted="#52514e", grid="#e6e5e0", ring="#ffffff"),
-    "dark": dict(bg="#1a1a19", land="#2b2b29", coast="#46453f", text="#f0efec", muted="#c3c2b7", grid="#34332f", ring="#1a1a19"),
+    "dark": dict(bg="#0a1626", land="#17393a", coast="#2c5a58", text="#ffffff", muted="#cfdbe3", grid="#27445f", ring="#0a1626"),
 }
 
 
@@ -42,11 +42,11 @@ def style(ax, t):
     ax.set_axisbelow(True)
 
 
-def network_map(key, theme, name, title=None):
+def network_map(key, theme, name, title=None, clean=False):
     t = THEMES[theme]
     s = load(key)
     fig, ax = plt.subplots(figsize=(9.2, 7.4), dpi=170, facecolor=t["bg"])
-    ax.set_facecolor(t["bg"] if theme == "light" else "#141413")
+    ax.set_facecolor(t["bg"])
     for ring in LAND:
         xs, ys = zip(*ring)
         ax.fill(xs, ys, color=t["land"], ec=t["coast"], lw=0.5, zorder=1)
@@ -92,8 +92,11 @@ def network_map(key, theme, name, title=None):
     ]
     if not any(d["colocated"] for d in s["depots"]):
         items.insert(2, Line2D([], [], marker="D", ls="", color=YELLOW, label="Field depot"))
-    leg = ax.legend(handles=items, loc="upper left", fontsize=8.5, facecolor=t["bg"], edgecolor=t["grid"], labelcolor=t["text"], framealpha=0.95)
-    leg.get_frame().set_linewidth(0.6)
+    if clean:
+        ax.axis("off")
+    else:
+        leg = ax.legend(handles=items, loc="upper left", fontsize=8.5, facecolor=t["bg"], edgecolor=t["grid"], labelcolor=t["text"], framealpha=0.95)
+        leg.get_frame().set_linewidth(0.6)
     if title:
         ax.set_title(title, color=t["text"], fontsize=11, loc="left")
     fig.tight_layout()
@@ -124,12 +127,13 @@ def cost_stack(theme, name):
 def baseline(theme, name):
     t = THEMES[theme]
     b = load("baselines")
-    rows = [("Optimised", b["optimised"], BLUE), ("Field depots", b["field"], "#8f8e85"), ("Greedy heuristic", b["greedy"], "#8f8e85"), ("Airport-first", b["airport_first"], "#8f8e85")]
-    fig, ax = plt.subplots(figsize=(6.6, 2.5), dpi=170, facecolor=t["bg"])
+    grey = "#8f8e85"
+    rows = [("Optimised", b["optimised"]["objective"], BLUE), ("K-means, best", b["kmeans"]["best"], grey), ("K-means, median", b["kmeans"]["median"], grey), ("Field depots", b["field"]["objective"], grey), ("Greedy heuristic", b["greedy"]["objective"], grey), ("Airport-first", b["airport_first"]["objective"], grey)]
+    fig, ax = plt.subplots(figsize=(6.6, 2.9), dpi=170, facecolor=t["bg"])
     ys = range(len(rows))[::-1]
     for y, (label, r, col) in zip(ys, rows):
-        ax.barh(y, r["objective"], color=col, height=0.5)
-        ax.text(r["objective"] + 6, y, f"{r['objective']:.1f}", va="center", color=t["text"], fontsize=9)
+        ax.barh(y, r, color=col, height=0.5)
+        ax.text(r + 6, y, f"{r:.1f}", va="center", color=t["text"], fontsize=9)
     ax.set_yticks(list(ys))
     ax.set_yticklabels([r[0] for r in rows], color=t["text"], fontsize=9)
     style(ax, t)
@@ -192,6 +196,7 @@ if __name__ == "__main__":
     network_map("official_base", "light", "map_base.png")
     network_map("field_depots", "light", "map_field.png")
     network_map("official_base", "dark", "map_base_dark.png")
+    network_map("official_base", "dark", "map_clean_dark.png", clean=True)
     for th in ("light",):
         cost_stack(th, "cost.png")
         baseline(th, "baseline.png")

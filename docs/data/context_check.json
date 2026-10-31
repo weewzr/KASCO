@@ -1,0 +1,63 @@
+{
+ "date": "2026-10-31",
+ "jet_t_per_kl": 0.8,
+ "litres_per_passenger": 13.78,
+ "uplift_kt": {
+  "PNK": 22.48,
+  "PKN": 5.21,
+  "BPN": 64.82,
+  "TRK": 7.18
+ },
+ "total_kt": 99.7,
+ "note": "Reality check only. PKN and TRK are scaled from passengers. The PNK volume is reported for West Kalimantan as a whole.",
+ "sources": [
+  {
+   "key": "pax_PNK",
+   "value": 2387536,
+   "what": "passengers 2024",
+   "url": "https://en.wikipedia.org/wiki/Supadio_International_Airport",
+   "fetched": true,
+   "figure_found": true
+  },
+  {
+   "key": "pax_PKN",
+   "value": 472637,
+   "what": "passengers 2024",
+   "url": "https://en.wikipedia.org/wiki/Iskandar_Airport",
+   "fetched": true,
+   "figure_found": true
+  },
+  {
+   "key": "pax_BPN",
+   "value": 5534519,
+   "what": "passengers 2024",
+   "url": "https://en.wikipedia.org/wiki/Sultan_Aji_Muhammad_Sulaiman_Sepinggan_Airport",
+   "fetched": true,
+   "figure_found": true
+  },
+  {
+   "key": "pax_TRK",
+   "value": 651557,
+   "what": "passengers 2024",
+   "url": "https://en.wikipedia.org/wiki/Juwata_Airport",
+   "fetched": true,
+   "figure_found": true
+  },
+  {
+   "key": "avtur_PNK",
+   "value": 77.0,
+   "what": "kL per day, West Kalimantan normal daily distribution, April 2024",
+   "url": "https://pontianakpost.jawapos.com/pro-bisnis/1464533107/permintaan-avtur-naik-8-di-bandara-supadio-pertamina-pastikan-stok-bahan-bakar-pesawat-udara-aman",
+   "fetched": true,
+   "figure_found": true
+  },
+  {
+   "key": "avtur_BPN",
+   "value": 222.0,
+   "what": "kL per day, Balikpapan, 2024 Pertamina statement via regional press",
+   "url": "https://ikn.kompas.com/read/2024/03/25/071604087/pertamina-pastikan-stok-bbm-lpg-serta-avtur-di-kalimantan-timur-aman",
+   "fetched": true,
+   "figure_found": true
+  }
+ ]
+}

@@ -81,8 +81,11 @@ pub struct Kpis {
     pub mean_km_farm_depot: f64,
     pub mean_km_depot_refinery: f64,
     pub mean_km_refinery_airport: f64,
-    /// Million km driven by large trucks, the lower traffic estimate.
+    /// Estimated million vehicle-km with large trucks and empty returns. Includes the
+    /// barge portion to Tarakan, so it is a planning estimate.
     pub truck_km_m: f64,
+    /// Freight moved, billion tonne-km.
+    pub tonne_km_bn: f64,
     pub sites_used: usize,
     pub sites_skipped: Vec<String>,
 }
@@ -124,7 +127,12 @@ pub struct Solution {
     pub message: String,
     pub objective: Option<f64>,
     pub bound: Option<f64>,
+    /// Proven gap of this design on candidate sites. None for a heuristic design.
     pub gap: Option<f64>,
+    /// Cost above the proven bound, the only quality statement a heuristic can make.
+    pub gap_to_bound: Option<f64>,
+    /// Candidate sites of the refineries before continuous refinement.
+    pub discrete_sites: Vec<String>,
     pub runtime_s: f64,
     pub nodes: usize,
     pub iterations: usize,
@@ -262,6 +270,7 @@ pub fn assemble(p: &Params, d: &Design) -> Solution {
         mean_depot_utilisation: mean(sol.depots.iter().map(|r| r.throughput).sum(), sol.depots.iter().map(|r| r.capacity).sum()),
         mean_km_farm_depot: mean(tkm(&sol.flows_fd), raw), mean_km_depot_refinery: mean(tkm(&sol.flows_dr), gate),
         mean_km_refinery_airport: mean(tkm(&sol.flows_ra), saf), truck_km_m: tkm_truck / 1e6,
+        tonne_km_bn: (tkm(&sol.flows_fd) + tkm(&sol.flows_dr) + tkm(&sol.flows_ra)) / 1e6,
         sites_used: used.iter().filter(|q| **q > 1e-6).count(),
         sites_skipped: net.sites.iter().enumerate().filter(|(i, _)| used[*i] <= 1e-6).map(|(_, s)| s.id.clone()).collect(),
     };

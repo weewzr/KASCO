@@ -1,0 +1,187 @@
+{
+ "source": "challenge3_parameters.xlsx, challenge3_airports_4.csv, update of 31 Oct 2026 12:45",
+ "n": 30,
+ "all_passed": true,
+ "checks": [
+  {
+   "input": "Depot Small CapEx, USD M",
+   "engine": 2.25,
+   "official": 2.25,
+   "passed": true
+  },
+  {
+   "input": "Depot Small capacity, kt",
+   "engine": 150.0,
+   "official": 150.0,
+   "passed": true
+  },
+  {
+   "input": "Depot Small variable OpEx, USD/t",
+   "engine": 5.0,
+   "official": 5.0,
+   "passed": true
+  },
+  {
+   "input": "Depot Small fixed OpEx, USD M/yr",
+   "engine": 0.1125,
+   "official": 0.1125,
+   "passed": true
+  },
+  {
+   "input": "Depot Small annualised CapEx, USD M/yr",
+   "engine": 0.1125,
+   "official": 0.1125,
+   "passed": true
+  },
+  {
+   "input": "Depot Large CapEx, USD M",
+   "engine": 4.5,
+   "official": 4.5,
+   "passed": true
+  },
+  {
+   "input": "Depot Large capacity, kt",
+   "engine": 300.0,
+   "official": 300.0,
+   "passed": true
+  },
+  {
+   "input": "Depot Large variable OpEx, USD/t",
+   "engine": 4.0,
+   "official": 4.0,
+   "passed": true
+  },
+  {
+   "input": "Depot Large fixed OpEx, USD M/yr",
+   "engine": 0.225,
+   "official": 0.225,
+   "passed": true
+  },
+  {
+   "input": "Depot Large annualised CapEx, USD M/yr",
+   "engine": 0.225,
+   "official": 0.225,
+   "passed": true
+  },
+  {
+   "input": "Refinery Small CapEx, USD M",
+   "engine": 480.0,
+   "official": 480.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Small capacity, kt",
+   "engine": 500.0,
+   "official": 500.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Small variable OpEx, USD/t",
+   "engine": 60.0,
+   "official": 60.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Small fixed OpEx, USD M/yr",
+   "engine": 24.0,
+   "official": 24.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Small annualised CapEx, USD M/yr",
+   "engine": 24.0,
+   "official": 24.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Large CapEx, USD M",
+   "engine": 765.0,
+   "official": 765.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Large capacity, kt",
+   "engine": 1087.0,
+   "official": 1087.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Large variable OpEx, USD/t",
+   "engine": 55.0,
+   "official": 55.0,
+   "passed": true
+  },
+  {
+   "input": "Refinery Large fixed OpEx, USD M/yr",
+   "engine": 38.25,
+   "official": 38.25,
+   "passed": true
+  },
+  {
+   "input": "Refinery Large annualised CapEx, USD M/yr",
+   "engine": 38.25,
+   "official": 38.25,
+   "passed": true
+  },
+  {
+   "input": "Tariff Farm to depot, USD/t/km",
+   "engine": 0.1,
+   "official": 0.1,
+   "passed": true
+  },
+  {
+   "input": "Tariff Depot to refinery, USD/t/km",
+   "engine": 0.12,
+   "official": 0.12,
+   "passed": true
+  },
+  {
+   "input": "Tariff Refinery to airport, USD/t/km",
+   "engine": 0.08,
+   "official": 0.08,
+   "passed": true
+  },
+  {
+   "input": "Demand PNK, kt",
+   "engine": 300.0,
+   "official": 300.0,
+   "passed": true
+  },
+  {
+   "input": "Demand PKN, kt",
+   "engine": 300.0,
+   "official": 300.0,
+   "passed": true
+  },
+  {
+   "input": "Demand BPN, kt",
+   "engine": 300.0,
+   "official": 300.0,
+   "passed": true
+  },
+  {
+   "input": "Demand TRK, kt",
+   "engine": 300.0,
+   "official": 300.0,
+   "passed": true
+  },
+  {
+   "input": "Yield, t/t",
+   "engine": 0.2,
+   "official": 0.2,
+   "passed": true
+  },
+  {
+   "input": "Depot mass retention",
+   "engine": 1.0,
+   "official": 1.0,
+   "passed": true
+  },
+  {
+   "input": "Road factor",
+   "engine": 1.3,
+   "official": 1.3,
+   "passed": true
+  }
+ ]
+}

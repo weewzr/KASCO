@@ -3,7 +3,8 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = (x, d = 0) => (x === null || x === undefined || Number.isNaN(x) ? "n/a" : Number(x).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d }));
 const usd = (x, d = 1) => `USD ${fmt(x, d)}M`;
-const COL = { s1: "#3987e5", s2: "#d95926", s3: "#199e70", s4: "#c98500", text: "#f0efec", text2: "#c3c2b7", muted: "#8f8e85", grid: "#2e2d2a" };
+const COL = { s1: "#3987e5", s2: "#d95926", s3: "#199e70", s4: "#c98500", text: "#ffffff", text2: "#cfdbe3", muted: "#94a9b8", grid: "#27445f" };
+const SURFACE = "#10233a";
 const ROLE = { farm: COL.s3, depot: COL.s4, ref: COL.s2, air: COL.s1 };
 const AIRPORTS = ["PNK", "PKN", "BPN", "TRK"];
 const TABS = [["overview", "Overview"], ["map", "Network map"], ["optimise", "Optimisation"], ["scenarios", "Scenario analysis"], ["insights", "Decision support"], ["evaluation", "Evaluation"], ["reports", "Reports"]];
@@ -23,16 +24,29 @@ const ASSUMPTIONS = [
   ["Distance", "Great-circle x 1.3", "Official", "Update, 31 Oct 12:45", "Our OSRM sample suggests 1.9 in practice, tested as a scenario."],
   ["Tarakan leg", "Barge at 0.08 USD/t/km", "Official", "Update, 31 Oct 12:45", "Same tariff, no fixed cost."],
   ["Refinery candidates", "80 biomass sites, PNK, PKN, BPN", "Ours", "Modelling choice", "Tarakan is excluded because biomass cannot reach the island. Continuous refinement then moves plants off these points."],
-  ["Depot placement", "At the refinery", "Derived", "Triangle inequality", "Holds when second-leg tariff x retention is at least the first-leg tariff."],
+  ["Depot placement", "At the refinery", "Derived", "Triangle inequality and HiGHS check", "Needs second-leg tariff x retention at or above the first-leg tariff. HiGHS confirmed it on the base fleet with depots free to go anywhere."],
   ["One refinery per site", "At most one", "Ours", "Modelling choice", "Depot modules may share a site."],
   ["Real jet uplift", "About 100 kt/yr across the four", "Public", "Pertamina press 2024; DGCA and BPS passengers", "Reality check only. PKN and TRK are scaled from passengers."],
   ["Blend reality check", "5% of real uplift", "Public", "Singapore 3 to 5% by 2030", "Reality check only. Indonesia's 1% from 2027 covers Jakarta and Bali departures."],
   ["Road distance check", "OSRM road km", "Public", "OpenStreetMap via OSRM, scripts/build_data.py", "Reality check only."],
 ];
 
+const EVIDENCE = [
+  ["Airbus's Singapore office was reported working with IPB University on Indonesian biomass, logistics, supply chain mapping and factory siting to cut transport cost.", "QC Intelligence", "https://www.qcintel.com/biofuels/article/airbus-and-indonesia-team-up-on-biomass-based-saf-reports-46429.html", "Aug 2025", "Secondary report"],
+  ["SAF was about 1.9 Mt in 2025, only 0.6% of jet fuel.", "IATA", "https://www.iata.org/en/pressroom/2025-releases/2025-12-09-04/", "9 Dec 2025", "Industry body"],
+  ["Indonesia's 1% SAF requirement from 2027 covers international flights from its two busiest airports, so Kalimantan's airports fall outside it.", "Fuels and Lubes", "https://www.fuelsandlubes.com/indonesia-to-require-1-saf-blend-from-2027/", "Jul 2026", "Trade press"],
+  ["A gasification Fischer-Tropsch plant failed on equipment and liquidity, showing how exposed these projects are.", "Waste Dive", "https://www.wastedive.com/news/fulcrum-bioenergy-chapter-11-bankruptcy-nevada/726555/", "Sep 2024", "Trade press"],
+  ["Pertamina's first SAF was used cooking oil co-processed at Cilacap, about 32 kL for Pelita Air. Biomass-based routes remain ahead.", "Hydrocarbon Engineering", "https://www.hydrocarbonengineering.com/clean-fuels/13082025/kilang-pertamina-delivers-saf/", "Aug 2025", "Trade press"],
+  ["Southeast Asian feedstock could yield about 45.7 Mt of SAF a year by 2050, with palm residues at 11.8%.", "RSB and Boeing", "https://rsb.org/2024/09/03/rsb-launches-study-with-boeing-on-sustainable-feedstock-potential-in-southeast-asia/", "Sep 2024", "Industry study"],
+  ["An ASEAN study found Fischer-Tropsch and Alcohol-to-Jet the most viable routes for regional wastes.", "GHD", "https://ghd.com/projects/promoting-sustainable-aviation-fuels-across-southeast-asian-nations", "2025", "Industry study"],
+  ["A preliminary national estimate puts Indonesian SAF potential near 37 million m3 a year, with palm residues about 77%.", "Inayah et al.", "https://journals.aau.dk/index.php/sepm/article/view/10615", "2026", "Journal article"],
+  ["Biomass transport was 13.5 to 30% of plant supply cost in one Serbian case, depending on site and mode.", "UNS repository", "https://open.uns.ac.rs/handle/123456789/1798", "Not confirmed", "Study-specific"],
+  ["Central Kalimantan palm freight split about evenly between road and river, with intermodal routes the cheapest generalised option.", "Jurnal Transportasi", "https://journal.unpar.ac.id/index.php/jurnaltransportasi/article/view/412", "About 2010 to 2012", "Journal article, dated"],
+];
+
 const state = { keys: [], sols: {}, names: {}, cur: "official_base", other: "field_depots", net: null, base: null, ladder: null, sens: null, highs: null, charts: {}, maps: {}, chat: [], customN: 0 };
 
-const worker = new Worker("worker.js");
+const worker = new Worker("worker.js?v=4");
 const pending = new Map();
 let rpcId = 0;
 worker.onmessage = (e) => {
@@ -92,7 +106,7 @@ function renderOverview() {
     ${tile(`${fmt(k.biomass_used_kt)} kt`, `Biomass used, ${fmt(100 * k.biomass_used_share, 1)}% of supply`)}
     ${tile(`${fmt(k.saf_kt)} kt`, "SAF delivered per year")}
     ${tile(`${fmt(100 * k.fill_rate, 1)}%`, "Demand met")}
-    ${tile(s.gap === null ? "n/a" : `${fmt(100 * s.gap, 2)}%`, "Proven gap on candidate sites")}
+    ${s.gap === null ? tile(`${fmt(100 * s.gap_to_bound, 2)}%`, "Above proven bound, heuristic") : tile(`${fmt(100 * s.gap, 2)}%`, "Proven gap on candidate sites")}
   </div>
   <div class="grid2">
     <div class="card"><h3>Where the money goes</h3><div class="chart short"><canvas id="costStack"></canvas></div>
@@ -104,10 +118,14 @@ function renderOverview() {
   <div class="card"><h3>What the numbers say</h3>
     <ul>
       <li>Refineries drive the decision. At 6,000 kt of intake, ${b.kpis.n_refineries_large} large plants is the cheapest fleet, and transport is only ${fmt(100 * b.costs.logistics_total / b.costs.total_annual, 1)}% of cost.</li>
-      <li>Depots belong at the refinery under these inputs. The second leg costs more per tonne-km than the first and depots lose no mass, so any depot in the field adds cost.</li>
-      <li>Field depots with a 60 km gathering radius cost ${usd(f.objective - b.objective)} more per year (+${fmt(100 * (f.objective / b.objective - 1), 1)}%) and cut truck-km by ${fmt(100 * (1 - f.kpis.truck_km_m / b.kpis.truck_km_m), 0)}%, because large trucks do the long haul. That is the trade-off to weigh.</li>
+      <li>Depots sit at the refineries under these inputs, because the second leg costs more per tonne-km and depots lose no mass. On the base fleet HiGHS confirmed no cheaper depot layout exists. Real wet feedstock could change this.</li>
+      <li>Field depots cost ${usd(f.objective - b.objective)} more per year (+${fmt(100 * (f.objective / b.objective - 1), 1)}%). They move ${fmt(100 * (f.kpis.tonne_km_bn / b.kpis.tonne_km_bn - 1), 1)}% more tonne-km but need an estimated ${fmt(100 * (1 - f.kpis.truck_km_m / b.kpis.truck_km_m), 0)}% fewer truck-km, since larger trucks carry the long leg. That is the trade-off to weigh.</li>
+      <li>The network costs ${usd(state.base.greedy.saving_usd_m, 0)} to ${usd(state.base.airport_first.saving_usd_m, 0)} a year less than two simple heuristic layouts. A strong k-means benchmark, handed the same six-plant fleet and our refinement, reaches our network at best and sits ${usd(state.base.kmeans.median_saving_usd_m)} above it at median, because transport is a small share of cost. KASCO's value is the proven bound, the fleet and size choice in each scenario, and the limits it exposes.</li>
       <li>${b.kpis.sites_skipped.length} of 80 sites are left unused, which accounts for the ${fmt(6800 - b.kpis.biomass_used_kt)} kt not needed.</li>
-    </ul></div>`;
+    </ul></div>
+  <div class="card"><h3>Why this is a real planning problem</h3>
+    <ul>${EVIDENCE.slice(0, 4).map((e) => `<li>${e[0]} <a href="${e[2]}" target="_blank" rel="noopener">${esc(e[1])}</a></li>`).join("")}</ul>
+    <p class="note">The 80 biomass sites, the 300 kt demand and all costs are official challenge inputs, and they are modelling values. Sources and their limits are under Reports.</p></div>`;
   chart("costStack", {
     type: "bar",
     data: { labels: ["Annual cost"], datasets: [
@@ -115,7 +133,7 @@ function renderOverview() {
       { label: "Fixed OpEx", data: [c.opex_fixed], backgroundColor: COL.s2 },
       { label: "Variable OpEx", data: [c.opex_variable], backgroundColor: COL.s3 },
       { label: "Transport", data: [c.logistics_total], backgroundColor: COL.s4 },
-    ].map((d) => ({ ...d, borderColor: "#1a1a19", borderWidth: 2, barThickness: 34 })) },
+    ].map((d) => ({ ...d, borderColor: SURFACE, borderWidth: 2, barThickness: 34 })) },
     options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } }, tooltip: { callbacks: { label: (t) => `${t.dataset.label}: USD ${fmt(t.raw, 1)}M (${fmt(100 * t.raw / c.total_annual, 1)}%)` } } },
       scales: { x: { stacked: true, grid: { color: COL.grid }, title: { display: true, text: "USD M per year" } }, y: { stacked: true, display: false } } },
   });
@@ -221,7 +239,7 @@ function renderMap() {
     [["farm_depot", s.flows_fd], ["depot_refinery", s.flows_dr], ["refinery_airport", s.flows_ra]].forEach(([l, v]) => v.forEach((f) => rows.push([l, f.src, f.dst, f.kt.toFixed(4), f.km.toFixed(2), f.usd_m.toFixed(5), f.mode])));
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv" }));
-    a.download = `${state.cur}_flows.csv`;
+    a.download = `kasco_${state.cur}_flows.csv`;
     a.click();
   };
 }
@@ -297,13 +315,18 @@ function compareRows(a, b) {
   const rows = [
     ["Total annual cost, USD M", (s) => s.objective, 1], ["Cost per tonne SAF, USD", (s) => s.kpis.unit_cost_usd_t, 0], ["Refineries", (s) => s.kpis.n_refineries, 0], ["Depots", (s) => s.kpis.n_depots, 0],
     ["Biomass used, kt", (s) => s.kpis.biomass_used_kt, 0], ["SAF delivered, kt", (s) => s.kpis.saf_kt, 0], ["CapEx, USD M", (s) => s.costs.capex_total, 0], ["Transport, USD M/yr", (s) => s.costs.logistics_total, 1],
-    ["Mean refinery use, %", (s) => 100 * s.kpis.mean_refinery_utilisation, 1], ["Truck km, millions/yr", (s) => s.kpis.truck_km_m, 1],
+    ["Mean refinery use, %", (s) => 100 * s.kpis.mean_refinery_utilisation, 1], ["Tonne-km, billions/yr", (s) => s.kpis.tonne_km_bn, 3], ["Estimated truck-km, millions/yr", (s) => s.kpis.truck_km_m, 1],
   ];
   return rows.map(([l, f, d]) => {
     const x = g(a, f), y = g(b, f);
     const diff = x !== null && y !== null ? y - x : null;
     return `<tr><td>${l}</td><td class="n">${fmt(x, d)}</td><td class="n">${fmt(y, d)}</td><td class="n">${diff === null ? "n/a" : (diff >= 0 ? "+" : "") + fmt(diff, d)}</td></tr>`;
   }).join("");
+}
+
+function gapText(s) {
+  if (s.gap !== null) return `${fmt(100 * s.gap, 2)}%`;
+  return s.gap_to_bound === null ? "n/a" : `No proof, ${fmt(100 * s.gap_to_bound, 2)}% above bound`;
 }
 
 function renderScenarios() {
@@ -314,7 +337,7 @@ function renderScenarios() {
   <h2>Scenario analysis</h2>
   <div class="card scroll"><table>
     <tr><th>Scenario</th><th>Status</th><th class="n">Annual cost, USD M</th><th class="n">USD/t SAF</th><th class="n">Refineries</th><th class="n">Depots</th><th class="n">Gap</th></tr>
-    ${list.map((s) => `<tr><td>${esc(state.names[s.key])}</td><td>${statusPill(s)}</td><td class="n">${fmt(s.objective, 1)}</td><td class="n">${s.refineries.length ? fmt(s.kpis.unit_cost_usd_t) : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_refineries : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_depots : "n/a"}</td><td class="n">${s.gap === null ? "n/a" : fmt(100 * s.gap, 2) + "%"}</td></tr>`).join("")}
+    ${list.map((s) => `<tr><td>${esc(state.names[s.key])}</td><td>${statusPill(s)}</td><td class="n">${fmt(s.objective, 1)}</td><td class="n">${s.refineries.length ? fmt(s.kpis.unit_cost_usd_t) : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_refineries : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_depots : "n/a"}</td><td class="n">${gapText(s)}</td></tr>`).join("")}
   </table></div>
   <div class="grid2">
     <div class="card"><h3>Side by side</h3><div class="row" style="margin-bottom:8px"><span class="note">${esc(state.names[a.key])}</span> vs <select id="cmpPick">${state.keys.map((k) => `<option value="${k}" ${k === state.other ? "selected" : ""}>${esc(state.names[k])}</option>`).join("")}</select></div>
@@ -322,7 +345,7 @@ function renderScenarios() {
     <div class="card"><h3>Cost by scenario, USD M per year</h3><div class="chart tall"><canvas id="scenCost"></canvas></div></div>
   </div>`;
   $("#cmpPick").onchange = (e) => { state.other = e.target.value; $("#scenario2").value = e.target.value; renderScenarios(); };
-  const set = (label, f, color) => ({ label, data: ok.map(f), backgroundColor: color, borderColor: "#1a1a19", borderWidth: 2 });
+  const set = (label, f, color) => ({ label, data: ok.map(f), backgroundColor: color, borderColor: SURFACE, borderWidth: 2 });
   chart("scenCost", {
     type: "bar",
     data: { labels: ok.map((s) => state.names[s.key].slice(0, 34)), datasets: [set("Annualised CapEx", (s) => s.costs.annual_capex, COL.s1), set("Fixed OpEx", (s) => s.costs.opex_fixed, COL.s2), set("Variable OpEx", (s) => s.costs.opex_variable, COL.s3), set("Transport", (s) => s.costs.logistics_total, COL.s4)] },
@@ -347,12 +370,12 @@ function md(t) {
   return out.join("");
 }
 
-const EXAMPLES = ["Why was this refinery selected?", "Which routes are most expensive?", "Why are large depots preferable?", "What happens if demand increases by 10%?", "What happens if demand increases by 20%?", "Which facilities are near capacity?", "How much does this improve on the baseline?", "Show the cost breakdown", "What is the lifecycle CO2 of this network?"];
+const EXAMPLES = ["Why was this refinery selected?", "Which routes are most expensive?", "Why are large depots preferable?", "Why are some sites unused?", "What happens if SAF demand increases by 10% while refinery CapEx increases by 15%?", "What happens if demand increases by 20%?", "Which facilities are near capacity?", "How much does this improve on the baseline?", "Show the cost breakdown", "What is the lifecycle CO2 of this network?"];
 
 function renderInsights() {
   $("#insights").innerHTML = `
   <h2>Decision support</h2>
-  <p class="note">No language model is used. Questions route by rule to solver records, what-if requests rerun the solver, and every answer lists the fields it read. Questions outside the model are declined. Answers apply to the selected scenario: ${esc(state.names[state.cur])}.</p>
+  <p class="note">No language model is used. Questions route by rule to solver records, and every answer lists the fields it read. A what-if can change several inputs at once, and it runs only when every part maps to a validated input. Questions outside the model are declined. Answers apply to the selected scenario: ${esc(state.names[state.cur])}.</p>
   <div class="card">
     <div class="chips">${EXAMPLES.map((e) => `<button class="chip">${esc(e)}</button>`).join("")}</div>
     <div class="ask"><input type="text" id="q" placeholder="Ask about this network"><button class="btn" id="askBtn">Ask</button></div>
@@ -385,25 +408,45 @@ async function ask(q) {
 }
 
 function renderEvaluation() {
-  const s = sol(), B = state.base, H = state.highs;
-  const rows = [["Optimised, refineries with depots", B.optimised], ["Field depots, 60 km radius", B.field], ["Greedy heuristic", B.greedy], ["Airport-first", B.airport_first]];
+  const s = sol(), B = state.base, H = state.highs, KM = B.kmeans, DC = state.depots;
+  const rows = [["Optimised", B.optimised], ["Field depots, 60 km radius", B.field], ["Greedy heuristic", B.greedy], ["Airport-first", B.airport_first]];
+  const kmRows = [[`K-means, same fleet and refinement, best of ${KM.restarts}`, KM.best, Math.max(0, KM.best_saving_usd_m), Math.max(0, KM.best_saving_pct)], ["K-means, same fleet and refinement, median", KM.median, KM.median_saving_usd_m, KM.median_saving_pct]];
+  const chartRows = [["Optimised", B.optimised.objective], ["K-means, best", KM.best], ["K-means, median", KM.median], ["Field depots", B.field.objective], ["Greedy heuristic", B.greedy.objective], ["Airport-first", B.airport_first.objective]];
   const fails = state.keys.map((k) => state.sols[k]).filter((x) => x.status === "infeasible");
   const v = s.validation || [];
+  const A = state.sols.official_base, F = state.sols.field_depots;
+  const ab = [
+    ["Annual total, USD M", (x) => x.objective, 2], ["CapEx, USD M", (x) => x.costs.capex_total, 1], ["Annualised CapEx plus fixed OpEx, USD M/yr", (x) => x.costs.annual_capex + x.costs.opex_fixed, 1], ["Variable OpEx, USD M/yr", (x) => x.costs.opex_variable, 1], ["Logistics, USD M/yr", (x) => x.costs.logistics_total, 1],
+    ["Depots", (x) => x.kpis.n_depots, 0], ["Refineries", (x) => x.kpis.n_refineries, 0], ["Biomass, kt/yr", (x) => x.kpis.biomass_used_kt, 0], ["SAF, kt/yr", (x) => x.kpis.saf_kt, 0], ["Demand met, %", (x) => 100 * x.kpis.fill_rate, 0],
+    ["Freight moved, billion tonne-km", (x) => x.kpis.tonne_km_bn, 3], ["Estimated truck-km, millions", (x) => x.kpis.truck_km_m, 1],
+  ];
+  const M = state.marginal;
+  const cliff = 6 * 1087 * 0.2;
   $("#evaluation").innerHTML = `
   <h2>Evaluation</h2>
   <div class="grid2">
-    <div class="card"><h3>Against baselines, same demand and cost basis</h3><div class="chart short"><canvas id="baseChart"></canvas></div>
-      <div class="scroll"><table><tr><th>Design</th><th class="n">USD M/yr</th><th class="n">Saving vs this</th><th class="n">Ref</th><th class="n">Dep</th></tr>
-      ${rows.map(([l, r], i) => `<tr><td>${l}</td><td class="n">${fmt(r.objective, 1)}</td><td class="n">${i ? `${fmt(r.saving_usd_m, 1)} (${fmt(r.saving_pct, 1)}%)` : "n/a"}</td><td class="n">${r.n_ref}</td><td class="n">${r.n_dep}</td></tr>`).join("")}</table></div>
-      <p class="note">Baselines are measured runs of simple planner rules, not estimates of current industry practice.</p></div>
+    <div class="card"><h3>Against baselines, same demand and cost basis</h3><div class="chart"><canvas id="baseChart"></canvas></div>
+      <div class="scroll"><table><tr><th>Design</th><th class="n">USD M/yr</th><th class="n">Extra cost vs optimised</th><th class="n">Ref</th><th class="n">Dep</th></tr>
+      ${rows.map(([l, r], i) => `<tr><td>${l}</td><td class="n">${fmt(r.objective, 1)}</td><td class="n">${i ? `${fmt(r.saving_usd_m, 1)} (${fmt(r.saving_pct, 1)}%)` : "n/a"}</td><td class="n">${r.n_ref}</td><td class="n">${r.n_dep}</td></tr>`).join("")}
+      ${kmRows.map((r) => `<tr><td>${r[0]}</td><td class="n">${fmt(r[1], 1)}</td><td class="n">${fmt(r[2], 1)} (${fmt(r[3], 1)}%)</td><td class="n">${KM.n_ref}</td><td class="n">${KM.n_dep}</td></tr>`).join("")}</table></div>
+      <p class="note">These are measured model runs, not savings against real planners. The greedy and airport rules are simple heuristics. The k-means benchmark is deliberately strong: it is handed the cheapest fleet, exact flows and our refinement. Its best run reaches our network, which is independent support for the result and also shows the site search adds little once the fleet is known. Transport is a small share of cost, so the objective is flat near the optimum.</p></div>
     <div class="card"><h3>How far to trust the optimum</h3><div class="scroll"><table>
       <tr><td>Rust cost, candidate sites</td><td class="n">${usd(B.discrete, 2)}</td></tr>
       <tr><td>Rust proven lower bound</td><td class="n">${usd(B.bound, 2)}</td></tr>
       <tr><td>Cost after continuous refinement</td><td class="n">${usd(B.optimised.objective, 2)}</td></tr>
-      ${H ? `<tr><td>${esc(H.solver)} cost, same model</td><td class="n">${usd(H.objective, 2)}</td></tr><tr><td>${esc(H.solver)} lower bound</td><td class="n">${usd(H.bound, 2)}</td></tr>` : ""}
+      ${H ? `<tr><td>${esc(H.solver)} cost, same co-located model</td><td class="n">${usd(H.objective, 2)}</td></tr><tr><td>${esc(H.solver)} lower bound at ${fmt(H.time_limit_s)} s</td><td class="n">${usd(H.bound, 2)}</td></tr>` : ""}
+      ${DC ? `<tr><td>Depots free to go anywhere, base fleet, HiGHS proven</td><td class="n">${usd(DC.free_depot_cost, 2)}</td></tr>` : ""}
     </table></div>
-    <p class="note">The bound applies to the candidate-site problem. Continuous refinement finds a local optimum with no global proof.${H ? " HiGHS is an independent solver reading the same model from a plain LP file." : ""}</p>
+    <p class="note">Status: the base case is feasible within a proven ${fmt(100 * B.optimised.gap, 2)}% on candidate sites. That bound comes almost entirely from the root relaxation, since biomass sites are near-substitutes and branching barely moves it. Refined coordinates are a local optimum with no global proof, and the field design is a heuristic. HiGHS reads the exported LP file, which covers co-located depots.${DC ? " The depot row tests the wider three-tier model on this fleet only." : ""}</p>
     ${state.check ? `<h3 style="margin-top:12px">Is the Rust bound valid?</h3><p class="note">On smaller demand levels HiGHS proves the optimum, so the Rust bound must sit at or below it.</p><div class="scroll"><table><tr><th class="n">Demand, kt</th><th class="n">Rust cost</th><th class="n">Rust bound</th><th class="n">HiGHS optimum</th><th>Result</th></tr>${state.check.map((r) => `<tr><td class="n">${fmt(r.total_demand_kt)}</td><td class="n">${fmt(r.rust_cost, 3)}</td><td class="n">${fmt(r.rust_bound, 3)}</td><td class="n">${fmt(r.highs_cost, 3)}</td><td><span class="pill ${r.bound_valid ? "good" : "bad"}">${r.bound_valid ? "Valid" : "Invalid"}</span></td></tr>`).join("")}</table></div>` : ""}</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Depots at the refinery or in the field</h3><div class="scroll"><table><tr><th>Measure</th><th class="n">A: at refinery, optimised</th><th class="n">B: in field, heuristic</th><th class="n">Change</th></tr>
+      ${ab.map(([l, f, d]) => { const x = f(A), y = f(F), c = y - x; return `<tr><td>${l}</td><td class="n">${fmt(x, d)}</td><td class="n">${fmt(y, d)}</td><td class="n">${c >= 0 ? "+" : ""}${fmt(c, d)}</td></tr>`; }).join("")}</table></div>
+      <p class="note">B gathers biomass within 60 km, then hauls the long leg in larger trucks. So B moves more freight in fewer truck journeys. Truck-km is an estimate that assumes large trucks and empty returns, and it includes the barge portion to Tarakan. A tonne-km tariff cannot see this benefit. The official inputs favour A, and real moisture loss could favour B.</p></div>
+    <div class="card"><h3>What extra demand costs</h3><div class="scroll"><table><tr><th>Change</th><th class="n">USD M/yr</th><th class="n">USD per extra t</th><th>Fleet</th><th class="n">Gap</th></tr>
+      ${M.rows.map((r) => `<tr><td>${esc(r.label)}</td><td class="n">${r.delta === null ? "Infeasible" : `${r.delta >= 0 ? "+" : ""}${fmt(r.delta, 1)}`}</td><td class="n">${r.usd_per_t === null ? "n/a" : fmt(r.usd_per_t)}</td><td>${r.delta === null ? "n/a" : `${r.n_large} large${r.n_small ? `, ${r.n_small} small` : ""}`}</td><td class="n">${r.gap === null ? "n/a" : `${fmt(100 * r.gap, 2)}%`}</td></tr>`).join("")}</table></div>
+      <p class="note">Each row is a full re-solve against the candidate-site base of ${usd(M.base, 2)}. These are planning estimates and not shadow prices, as plant decisions are whole units. Six large plants reach their limit at ${fmt(cliff, 1)} kt of SAF, and the next kilotonne needs a seventh plant, so cost steps up sharply there. Small differences can sit inside the solver gap.</p></div>
   </div>
   <div class="grid2">
     <div class="card"><h3>Change in annual cost when one input moves 20%</h3><div class="chart tall"><canvas id="tornado"></canvas></div>
@@ -418,7 +461,7 @@ function renderEvaluation() {
   ${s.trips && s.trips.length ? `<div class="card"><h3>Truck trips per year</h3><p class="note">Cost per tonne-km is the same for both truck sizes, so size changes traffic and leaves cost untouched.</p><div class="scroll"><table><tr><th>Leg</th><th class="n">Tonnes</th><th class="n">Small truck, t</th><th class="n">Trips</th><th class="n">Large truck, t</th><th class="n">Trips</th></tr>${s.trips.map((t) => `<tr><td>${t.leg}</td><td class="n">${fmt(t.tonnes)}</td><td class="n">${t.small_t}</td><td class="n">${fmt(t.trips_small)}</td><td class="n">${t.large_t}</td><td class="n">${fmt(t.trips_large)}</td></tr>`).join("")}</table></div></div>` : ""}`;
   chart("baseChart", {
     type: "bar",
-    data: { labels: rows.map((r) => r[0]), datasets: [{ label: "USD M per year", data: rows.map((r) => r[1].objective), backgroundColor: rows.map((_, i) => (i ? COL.muted : COL.s1)), borderRadius: 4, barThickness: 16 }] },
+    data: { labels: chartRows.map((r) => r[0]), datasets: [{ label: "USD M per year", data: chartRows.map((r) => r[1]), backgroundColor: chartRows.map((_, i) => (i ? COL.muted : COL.s1)), borderRadius: 4, barThickness: 16 }] },
     options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, grid: { color: COL.grid } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } },
   });
   const base = state.sens.base;
@@ -438,18 +481,27 @@ function renderEvaluation() {
 }
 
 function renderReports() {
+  const SC = state.screen, OC = state.official;
   $("#reports").innerHTML = `
   <h2>Reports and data</h2>
   <div class="grid2">
     <div class="card"><h3>Documents</h3><ul>
-      <li><a href="reports/Kalimantan_SAF_Technical_Report.pdf">Technical report (PDF)</a></li>
-      <li><a href="reports/Kalimantan_SAF_Pitch.pptx">Pitch deck (PowerPoint)</a></li>
-      <li><a href="reports/Kalimantan_SAF_Pitch.pdf">Pitch deck (PDF)</a></li>
+      <li><a href="reports/KASCO_Technical_Report.pdf">KASCO technical report (PDF)</a></li>
+      <li><a href="reports/KASCO_Pitch.pptx">KASCO pitch deck (PowerPoint)</a></li>
+      <li><a href="reports/KASCO_Pitch.pdf">KASCO pitch deck (PDF)</a></li>
     </ul></div>
     <div class="card"><h3>Results as data</h3><ul>
       ${state.keys.filter((k) => !k.startsWith("custom")).map((k) => `<li><a href="data/${k}.json">${esc(state.names[k])}</a></li>`).join("")}
     </ul></div>
   </div>
+  <div class="card"><h3>Real-world evidence</h3><div class="scroll"><table><tr><th>Finding</th><th>Source</th><th>Date</th><th>Type</th></tr>
+    ${EVIDENCE.map((e) => `<tr><td>${e[0]}</td><td><a href="${e[2]}" target="_blank" rel="noopener">${esc(e[1])}</a></td><td>${esc(e[3])}</td><td><span class="pill">${esc(e[4])}</span></td></tr>`).join("")}
+  </table></div><p class="note">Several items are secondary reports, and the Airbus and IPB details vary between them. We found no Kalimantan-wide residue tonnage and no public cost for an Indonesian Fischer-Tropsch plant. The planner workflow described on the Overview is our reasoned assumption.</p></div>
+  <div class="card"><h3>About the biomass data</h3><p>The 80 points are official modelling inputs, not surveyed production sites. ${SC ? `${SC.offshore_points.length} of them, holding ${fmt(SC.offshore_points.reduce((a, p) => a + p.kt, 0))} kt, fall off the Natural Earth coastline, up to ${fmt(Math.max(...SC.offshore_points.map((p) => p.km_to_land)), 1)} km from it. We keep them as biomass sources because the coordinates are official, and we do not place plants on them.` : ""}</p></div>
+  ${SC ? `<div class="card"><h3>Preliminary site screening, ${SC.radius_km} km radius</h3><div class="scroll"><table><tr><th>Plant</th><th>Near</th><th class="n">To road, m</th><th>Named rivers</th><th class="n">Ports, piers</th><th class="n">Industrial</th><th>Protected nearby</th></tr>
+    ${SC.sites.map((r) => `<tr><td>${r.id}</td><td>${esc(r.near)}</td><td class="n">${r.road_m === null ? "n/a" : fmt(r.road_m)}</td>${r.screened ? `<td>${esc(r.rivers.join(", ") || "None mapped")}</td><td class="n">${r.ports}</td><td class="n">${r.industrial}</td><td>${esc(r.protected.join(", ") || "None mapped")}</td>` : '<td colspan="4">Not screened, map service unavailable</td>'}</tr>`).join("")}
+  </table></div><p class="note">${esc(SC.note)} Land tenure, peat and forest status are unchecked. This table adds no constraint to the optimiser, which keeps the official great-circle x 1.3 distances.</p></div>` : ""}
+  ${OC ? `<div class="card"><h3>Official value check</h3><p>${OC.n} engine inputs were compared with the official workbook and airport file by <code>scripts/check_official.py</code>: <span class="pill ${OC.all_passed ? "good" : "bad"}">${OC.all_passed ? "All match" : "Mismatch found"}</span></p><p class="note">Source: ${esc(OC.source)}. Public data appears only in labelled reality-check scenarios and never in the base case.</p></div>` : ""}
   <div class="card"><h3>Assumption register</h3><div class="scroll"><table><tr><th>Input</th><th>Value</th><th>Status</th><th>Source</th><th>What to check</th></tr>
     ${ASSUMPTIONS.map((r) => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td><span class="pill">${esc(r[2])}</span></td><td>${esc(r[3])}</td><td>${esc(r[4])}</td></tr>`).join("")}
   </table></div><p class="note">Official inputs come from the Airbus update of 31 October 2026, 12:45. Public inputs appear only in labelled reality-check scenarios and never in the base case.</p></div>`;
@@ -486,8 +538,8 @@ function refresh() {
 async function start() {
   $("#tabs").innerHTML = TABS.map(([id, l]) => `<button role="tab" data-t="${id}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach((b) => { b.onclick = () => showTab(b.dataset.t); });
-  const [index, net, base, ladder, sens, highs, check] = await Promise.all(["index", "network", "baselines", "ladder", "sensitivity", "highs_check", "bound_check"].map(getJson));
-  Object.assign(state, { net, base, ladder, sens, highs, check });
+  const [index, net, base, ladder, sens, highs, check, marginal, depots, screen, official] = await Promise.all(["index", "network", "baselines", "ladder", "sensitivity", "highs_check", "bound_check", "marginal", "depot_check", "site_screen", "official_check"].map(getJson));
+  Object.assign(state, { net, base, ladder, sens, highs, check, marginal, depots, screen, official });
   state.net.coords = {};
   net.sites.forEach((s) => { state.net.coords[s.id] = [s.lat, s.lon]; });
   net.airports.forEach((a) => { state.net.coords[a.iata] = [a.lat, a.lon]; });
@@ -498,6 +550,7 @@ async function start() {
   $("#scenario").onchange = (e) => { state.cur = e.target.value; refresh(); };
   $("#scenario2").onchange = (e) => { state.other = e.target.value; refresh(); };
   $("#compare").onchange = refresh;
-  showTab("overview");
+  const wanted = location.hash.slice(1);
+  showTab(TABS.some(([id]) => id === wanted) ? wanted : "overview");
 }
 start();

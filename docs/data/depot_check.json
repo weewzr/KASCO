@@ -1,0 +1,19 @@
+{
+ "fleet": [
+  "KAL_SUP_24",
+  "KAL_SUP_41",
+  "KAL_SUP_44",
+  "KAL_SUP_46",
+  "KAL_SUP_65",
+  "KAL_SUP_71"
+ ],
+ "status": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+ "free_depot_cost": 890.3214771627115,
+ "free_depot_bound": 890.3214771627115,
+ "gap_pct": 0.0,
+ "colocated_cost": 890.3214771627115,
+ "difference_usd_m": 0.0,
+ "shared_depots": [],
+ "remote_depots": [],
+ "seconds": 46.5
+}

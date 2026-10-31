@@ -2,7 +2,7 @@
 let ex = null;
 
 async function init() {
-  const bytes = await (await fetch("saf.wasm")).arrayBuffer();
+  const bytes = await (await fetch("saf.wasm?v=4")).arrayBuffer();
   const { instance } = await WebAssembly.instantiate(bytes, { env: { js_now_ms: () => performance.now() } });
   ex = instance.exports;
 }

@@ -166,6 +166,75 @@ pub fn greedy(p: &Params) -> Option<Solution> {
     Some(s)
 }
 
+pub struct KmeansStats {
+    pub restarts: usize,
+    pub best: f64,
+    pub median: f64,
+    pub worst: f64,
+    pub best_valid: bool,
+    pub best_refineries: usize,
+    pub best_depots: usize,
+}
+
+/// A deliberately strong benchmark: biomass-weighted k-means sites, snapped to candidates,
+/// with the same exact flows and refinement as the optimiser. It uses the optimiser's fleet
+/// size, so it shows the value of the site search alone.
+pub fn kmeans(p: &Params, restarts: usize) -> Option<KmeansStats> {
+    let net = network();
+    let base = Instance::new(p);
+    let fleet = fleet_sizes(&base)?;
+    let k = fleet.len();
+    let n = net.sites.len();
+    let (mut seed, mut costs) = (12345u64, vec![]);
+    let mut best: Option<(f64, Solution)> = None;
+    for _ in 0..restarts {
+        let mut pick = || {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            (seed >> 33) as usize % n
+        };
+        let mut c: Vec<(f64, f64)> = (0..k).map(|_| { let s = &net.sites[pick()]; (s.lat, s.lon) }).collect();
+        for _ in 0..60 {
+            let mut sum = vec![(0.0, 0.0, 0.0); k];
+            for s in &net.sites {
+                let d = |j: usize| crate::data::haversine(s.lat, s.lon, c[j].0, c[j].1);
+                let j = (0..k).min_by(|&a, &b| d(a).partial_cmp(&d(b)).unwrap()).unwrap();
+                sum[j].0 += s.kt * s.lat;
+                sum[j].1 += s.kt * s.lon;
+                sum[j].2 += s.kt;
+            }
+            for j in 0..k {
+                if sum[j].2 > 0.0 {
+                    c[j] = (sum[j].0 / sum[j].2, sum[j].1 / sum[j].2);
+                }
+            }
+        }
+        let mut inst = Instance::new(p);
+        let mut open: Vec<(usize, usize)> = vec![];
+        for j in 0..k {
+            let d = |a: usize| crate::data::haversine(c[j].0, c[j].1, inst.cand[a].lat, inst.cand[a].lon);
+            let site = (0..inst.cand.len()).filter(|x| !open.iter().any(|o| o.0 == *x)).min_by(|&a, &b| d(a).partial_cmp(&d(b)).unwrap())?;
+            open.push((site, fleet[j]));
+        }
+        let Some(a) = allocate(&inst, &open) else { continue };
+        let r = crate::location::refine(&mut inst, &open, &a);
+        costs.push(r.cost);
+        if best.as_ref().map_or(true, |b| r.cost < b.0) {
+            best = Some((r.cost, assemble(p, &crate::colocated_design(&inst, &r.open, &r.alloc))));
+        }
+    }
+    costs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let (_, sol) = best?;
+    Some(KmeansStats {
+        restarts: costs.len(),
+        best: costs[0],
+        median: costs[costs.len() / 2],
+        worst: costs[costs.len() - 1],
+        best_valid: crate::validate::all_passed(&crate::validate::check(&sol, p)),
+        best_refineries: sol.kpis.n_refineries,
+        best_depots: sol.kpis.n_depots,
+    })
+}
+
 /// Refineries at the airports first, the default a fuel planner might reach for.
 pub fn airport_first(p: &Params) -> Option<Solution> {
     let inst = Instance::new(p);

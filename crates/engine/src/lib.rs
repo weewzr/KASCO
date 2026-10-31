@@ -20,7 +20,7 @@ use problem::*;
 use solution::*;
 
 /// Design records for co-located depots, where each refinery hosts its own depots.
-fn colocated_design(inst: &Instance, open: &[(usize, usize)], a: &Alloc) -> Design {
+pub(crate) fn colocated_design(inst: &Instance, open: &[(usize, usize)], a: &Alloc) -> Design {
     let p = &inst.p;
     let mut d = Design::default();
     for (o, &(k, s)) in open.iter().enumerate() {
@@ -80,20 +80,24 @@ pub fn run(p: &Params) -> Solution {
         let r = location::refine(&mut inst, &o.open, &o.alloc);
         let mut s = assemble(p, &colocated_design(&inst, &r.open, &r.alloc));
         s.refine_saving = Some(o.ub - r.cost);
-        s.status = if gap <= p.gap_target + 1e-9 || o.complete { "optimal".into() } else { "feasible_gap".into() };
-        s.message = format!("Candidate-site search closed to a {:.2}% gap. Continuous refinement then moved plants off candidate sites, which is a local optimum.", 100.0 * gap);
+        s.status = if gap <= p.gap_target + 1e-9 { "optimal".into() } else { "feasible_gap".into() };
+        s.message = format!("Candidate-site search proved a {:.2}% gap. Continuous refinement then moved plants off candidate sites, which is a local optimum.", 100.0 * gap);
         s
     } else {
         let mut s = assemble(p, &colocated_design(&inst, &o.open, &o.alloc));
-        s.status = if gap <= p.gap_target + 1e-9 || o.complete { "optimal".into() } else { "feasible_gap".into() };
-        s.message = format!("Candidate-site search closed to a {:.2}% gap.", 100.0 * gap);
+        s.status = if gap <= p.gap_target + 1e-9 { "optimal".into() } else { "feasible_gap".into() };
+        s.message = format!("Candidate-site search proved a {:.2}% gap.", 100.0 * gap);
         s
     };
     sol.discrete_objective = Some(o.ub);
+    sol.discrete_sites = o.open.iter().map(|&(k, _)| inst.cand[k].id.clone()).collect();
+    // A restricted design still sits above the bound, so field depots may report distance
+    // to it. Only the search's own design carries a proven gap.
     if !field || p.colocation_dominant() {
         sol.bound = Some(o.lb);
+        sol.gap_to_bound = sol.objective.map(|c| ((c - o.lb) / c).max(0.0));
     }
-    sol.gap = Some(gap);
+    sol.gap = if field { None } else { Some(gap) };
     sol.nodes = o.nodes;
     sol.iterations = o.iters;
     sol.validation = validate::check(&sol, p);

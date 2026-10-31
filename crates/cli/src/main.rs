@@ -27,10 +27,10 @@ fn parallel<T: Send, F: Fn(usize) -> T + Sync>(n: usize, f: F) -> Vec<T> {
 
 fn brief(s: &Solution) -> Value {
     json!({
-        "status": s.status, "objective": s.objective, "unit": s.kpis.unit_cost_usd_t, "gap": s.gap,
+        "status": s.status, "objective": s.objective, "unit": s.kpis.unit_cost_usd_t, "gap": s.gap, "gap_to_bound": s.gap_to_bound,
         "n_ref": s.kpis.n_refineries, "n_large": s.kpis.n_refineries_large, "n_small": s.kpis.n_refineries_small,
         "n_dep": s.kpis.n_depots, "saf": s.kpis.saf_kt, "biomass": s.kpis.biomass_used_kt, "logistics": s.costs.logistics_total,
-        "util": s.kpis.mean_refinery_utilisation, "truck_km_m": s.kpis.truck_km_m,
+        "util": s.kpis.mean_refinery_utilisation, "truck_km_m": s.kpis.truck_km_m, "tonne_km_bn": s.kpis.tonne_km_bn,
     })
 }
 
@@ -82,6 +82,8 @@ fn all(secs: f64) {
     let mut fv = brief(field);
     fv["saving_usd_m"] = json!(field.objective.unwrap() - o);
     fv["saving_pct"] = json!(100.0 * (field.objective.unwrap() - o) / field.objective.unwrap());
+    let km = baseline::kmeans(&p0, 50).unwrap();
+    let share = |c: f64| 100.0 * (c - o) / c;
     save("baselines", &json!({
         "optimised": brief(base),
         "discrete": base.discrete_objective,
@@ -89,8 +91,15 @@ fn all(secs: f64) {
         "greedy": cmp(baseline::greedy(&p0)),
         "airport_first": cmp(baseline::airport_first(&p0)),
         "field": fv,
+        "kmeans": {
+            "restarts": km.restarts, "best": km.best, "median": km.median, "worst": km.worst, "valid": km.best_valid,
+            "n_ref": km.best_refineries, "n_dep": km.best_depots,
+            "best_saving_usd_m": km.best - o, "best_saving_pct": share(km.best),
+            "median_saving_usd_m": km.median - o, "median_saving_pct": share(km.median),
+        },
     }));
     println!("baselines done");
+    marginal(secs);
 
     let levels = [5.0, 25.0, 50.0, 100.0, 200.0, 400.0, 600.0, 800.0, 1000.0, 1200.0, 1360.0];
     let ladder = parallel(levels.len(), |i| {
@@ -122,6 +131,66 @@ fn all(secs: f64) {
     });
     save("sensitivity", &json!({"base": o, "base_unit": base.kpis.unit_cost_usd_t, "rows": rows}));
     println!("sensitivity done");
+}
+
+/// Stress test of the candidate restriction: adds a land grid of extra refinery sites.
+fn grid(secs: f64) {
+    use saf_engine::data::{haversine, network, on_land};
+    use saf_engine::problem::Cand;
+    let net = network();
+    let p = Params { time_limit_s: secs, refine: false, ..Default::default() };
+    let mut inst = Instance::new(&p);
+    let before = inst.cand.len();
+    let (mut lat, mut added) = (-4.2, 0);
+    while lat < 3.2 {
+        let mut lon = 109.0;
+        while lon < 118.0 {
+            let near = net.sites.iter().map(|s| haversine(lat, lon, s.lat, s.lon)).fold(f64::INFINITY, f64::min);
+            if near < 90.0 && on_land(lat, lon) {
+                inst.push_cand(Cand { id: format!("G{added}"), lat, lon });
+                added += 1;
+            }
+            lon += 0.2;
+        }
+        lat += 0.2;
+    }
+    let o = saf_engine::solver::optimise(&inst).unwrap();
+    let r = saf_engine::location::refine(&mut inst, &o.open, &o.alloc);
+    save("grid_check", &json!({"candidates": before, "grid_added": added, "spacing_deg": 0.2, "candidate_cost": o.ub, "bound": o.lb, "refined_cost": r.cost}));
+    println!("grid: {before}+{added} candidates, cost {:.3}, refined {:.3}, bound {:.3}", o.ub, r.cost, o.lb);
+}
+
+/// Finite-difference planning estimates on candidate sites. Integer plant decisions mean
+/// these are not shadow prices, and a step in cost is expected at capacity thresholds.
+fn marginal(secs: f64) {
+    let p0 = Params { refine: false, ..Default::default() };
+    let t = (secs * 0.5).max(10.0);
+    let base = run(&Params { time_limit_s: secs, ..p0.clone() });
+    let c0 = base.objective.unwrap();
+    let cases: Vec<(String, f64, Params)> = [10.0, 25.0, 50.0, 100.0, 104.0, 105.0, 120.0, 150.0]
+        .iter()
+        .map(|&d| (format!("Demand +{d:.0} kt"), d, Params { demand: [300.0 + d / 4.0; 4], ..p0.clone() }))
+        .chain([
+            ("Large refinery capacity +100 kt".to_string(), 0.0, Params { refinery_cap: [500.0, 1187.0], ..p0.clone() }),
+            ("Biomass supply -5%".to_string(), 0.0, Params { biomass_multiplier: 0.95, ..p0.clone() }),
+            ("Biomass supply -10%".to_string(), 0.0, Params { biomass_multiplier: 0.90, ..p0.clone() }),
+            ("Biomass supply -12%".to_string(), 0.0, Params { biomass_multiplier: 0.88, ..p0.clone() }),
+            ("Transport tariffs +10%".to_string(), 0.0, Params { tariff_fd: 0.11, tariff_dr: 0.132, tariff_ra: 0.088, ..p0.clone() }),
+            ("Transport tariffs +20%".to_string(), 0.0, Params { tariff_fd: 0.12, tariff_dr: 0.144, tariff_ra: 0.096, ..p0.clone() }),
+        ])
+        .collect();
+    let rows = parallel(cases.len(), |i| {
+        let (label, d, p) = &cases[i];
+        let s = run(&Params { time_limit_s: t, ..p.clone() });
+        let c = s.objective;
+        json!({
+            "label": label, "extra_kt": d, "cost": c, "delta": c.map(|x| x - c0), "usd_per_t": c.filter(|_| *d > 0.0).map(|x| (x - c0) * 1000.0 / d),
+            "n_large": s.kpis.n_refineries_large, "n_small": s.kpis.n_refineries_small, "n_dep": s.kpis.n_depots,
+            "gap": s.gap, "status": s.status, "reason": s.diagnostics.first().map(|f| f.reason.clone()),
+        })
+    });
+    save("marginal", &json!({"base": c0, "base_gap": base.gap, "rows": rows}));
+    println!("marginal done");
 }
 
 /// Writes the strong candidate-site formulation in CPLEX LP format, for the official case.
@@ -198,6 +267,9 @@ fn main() {
     match args.get(1).map(String::as_str) {
         Some("lp") => lp(args.get(2).map_or("model.lp", String::as_str), args.get(3).and_then(|a| a.parse().ok()).unwrap_or(300.0)),
         Some("network") => network_json(),
+        Some("marginal") => marginal(args.get(2).and_then(|a| a.parse().ok()).unwrap_or(30.0)),
+        Some("grid") => grid(args.get(2).and_then(|a| a.parse().ok()).unwrap_or(100.0)),
+        Some("params") => save("params", &serde_json::to_value(Params::default()).unwrap()),
         Some("bound") => {
             // Reports the Rust cost and bound for one demand level, for comparison with HiGHS.
             let d: f64 = args.get(2).and_then(|a| a.parse().ok()).unwrap_or(300.0);

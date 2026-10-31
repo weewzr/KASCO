@@ -26,6 +26,9 @@ def load(n):
 base, field, real = load("official_base"), load("field_depots"), load("real_blend")
 B, H, CHECK = load("baselines"), load("highs_check"), load("bound_check")
 K, C = base["kpis"], base["costs"]
+KM = B["kmeans"]
+TK = 100 * (field["kpis"]["tonne_km_bn"] / K["tonne_km_bn"] - 1)
+VK = 100 * (1 - field["kpis"]["truck_km_m"] / K["truck_km_m"])
 
 BG, CARD, TEXT, MUTED = "1A1A19", "2C2C29", "F0EFEC", "C3C2B7"
 BLUE, ORANGE, AQUA, YELLOW = "3987E5", "D95926", "199E70", "C98500"
@@ -119,13 +122,14 @@ capex_b = C["capex_total"] / 1000
 
 # 1. Problem and opportunity
 s = slide(f"Where should USD {capex_b:.1f}B of SAF plant go in Kalimantan?",
-          "Meet the SAF network planner. They must pick refinery and depot sites before engineering starts. Today that means a few hand-drawn layouts in a spreadsheet. "
-          f"Kalimantan has 6,800 kilotonnes of biomass at 80 sites, and four airports each want 300 kilotonnes of SAF. A large refinery fixes USD 765 million of capital for 20 years, so a wrong site is expensive and hard to undo.")
-text(s, 0.6, 1.75, 6.0, 2.6, [
+          "Meet the SAF network planner, who must pick refinery and depot sites before engineering starts. Airbus itself was reported last year to be studying biomass logistics and factory siting in Indonesia with IPB University. "
+          f"Here the official inputs give 6,800 kilotonnes of biomass at 80 modelled sites, and four airports each wanting 300 kilotonnes of SAF. A large refinery fixes USD 765 million of capital for 20 years, so a wrong site is hard to undo.")
+text(s, 0.6, 1.75, 6.0, 3.6, [
     [("The user  ", {"bold": True}), ("A SAF network planner choosing sites before engineering starts", {})],
-    [("Today  ", {"bold": True}), ("A few hand-drawn layouts in a spreadsheet, with no proof of quality and no view of where a plan breaks", {})],
-    [("The cost of error  ", {"bold": True}), ("A misplaced large refinery fixes USD 765M of capital and its haulage for 20 years", {})],
-], size=18, name="Problem text")
+    [("Why now  ", {"bold": True}), ("Airbus and IPB University were reported studying Indonesian biomass logistics and factory siting in 2025", {})],
+    [("Today  ", {"bold": True}), ("We assume a few layouts in GIS and spreadsheets, with no proof of quality", {})],
+    [("The cost of error  ", {"bold": True}), ("A large refinery fixes USD 765M of capital and its haulage for 20 years", {})],
+], size=17, name="Problem text")
 stat(s, 7.0, 1.75, 2.75, 1.55, "6,800 kt", "biomass at 80 sites", AQUA)
 stat(s, 9.95, 1.75, 2.75, 1.55, "1,200 kt", "SAF, four airports", BLUE)
 stat(s, 7.0, 3.5, 2.75, 1.55, "6,000 kt", "biomass needed", AQUA)
@@ -159,8 +163,8 @@ text(s, 0.6, 6.05, 12.1, 0.5, "Hosted on GitHub Pages. No server, no account, no
 # 3. Engine
 gap_r, gap_h = 100 * base["gap"], H["gap_pct"] if H else None
 s = slide("The engine proves how close it is to the best network",
-          f"The model is a four-tier facility location problem. We split it by site with Lagrangian relaxation, which gives a true lower bound, and branch-and-bound closes the gap. Min-cost flow prices each design exactly. "
-          f"To check ourselves, we exported the model and solved it in HiGHS, a separate open-source solver. It reached the same cost, and our bound is tighter: {gap_r:.2f} percent in 60 seconds against {gap_h:.2f} percent in 480." + (" On smaller cases HiGHS proves optimal, our bound stays valid every time." if CHECK else ""))
+          f"The model is a four-tier facility location problem. We split it by site with Lagrangian relaxation, which gives a true lower bound, and min-cost flow prices each design exactly. "
+          f"To check ourselves, we exported the model and solved it in HiGHS, a separate open-source solver. It reached the same cost, and our bound is tighter: {gap_r:.2f} percent in 60 seconds against {gap_h:.2f} percent in 480." + (" On five smaller cases HiGHS proved the optimum, and we matched it each time." if CHECK else "") + " The final coordinates are a local refinement, so we claim no global proof for them.")
 steps = [("1", "Bound", "Lagrangian relaxation splits the model by site"), ("2", "Search", "Branch-and-bound over refinery sites and sizes"), ("3", "Price", "Exact min-cost flow for every design"), ("4", "Refine", "Move plants to the geometric median, on land")]
 for i, (n, h, d) in enumerate(steps):
     y = 1.8 + i * 1.12
@@ -184,28 +188,28 @@ for r, row in enumerate(rows):
                 ru.font.size, ru.font.name, ru.font.bold = Pt(15), "Calibri", r == 0
                 ru.font.color.rgb = rgb(TEXT)
 tb.columns[0].width, tb.columns[1].width, tb.columns[2].width = Inches(2.3), Inches(1.45), Inches(1.45)
-msg = "Both solvers reached the same cost."
+msg = "Both solvers reached the same cost on candidate sites."
 if CHECK:
-    msg += f" On {len(CHECK)} smaller cases solved by HiGHS, the Rust bound was valid every time."
+    msg += f" On {len(CHECK)} smaller cases HiGHS proved the optimum, and Rust matched it."
 text(s, 7.25, 4.95, 5.2, 1.0, msg, size=15, color=MUTED)
 
 # 4. Network
 s = slide("Six large refineries, inside the biomass clusters",
           f"Here is the result on the official inputs. Six large refineries, USD {base['objective']:.0f} million a year, USD {K['unit_cost_usd_t']:.0f} per tonne before feedstock. "
-          f"Nine sites are left unused. Depots sit at the refineries, because the second leg costs more per tonne-kilometre and depots lose no mass, so a field depot can only add cost. In the app every site, route and facility is clickable.")
+          f"Nine sites are left unused. Depots sit at the refineries, because under the official inputs the second leg costs more per tonne-kilometre and depots lose no mass. HiGHS confirmed that on this fleet. Real wet feedstock could change it. In the app every site, route and facility is clickable.")
 s.shapes.add_picture(str(REP / "fig" / "map_base_dark.png"), Inches(0.6), Inches(1.62), height=Inches(5.5))
 for i, (v, l, c) in enumerate([(f"USD {base['objective']:.1f}M", "per year, all costs", TEXT), (f"USD {K['unit_cost_usd_t']:.0f}/t", "SAF, before feedstock", TEXT), (f"{K['n_depots']} depots", "all at refineries", YELLOW), (f"{K['sites_used']} of 80", "sites used", AQUA)]):
     stat(s, 7.75, 1.62 + i * 1.4, 4.95, 1.28, v, l, c, size=28)
 
 # 5. Results
 s = slide("Measured gains, and where the plan breaks",
-          f"Against two rule-of-thumb networks on the same basis, we save USD {B['greedy']['saving_usd_m']:.0f} to {B['airport_first']['saving_usd_m']:.0f} million a year. Those are simple planner rules, not a claim about industry practice. "
-          f"Moving depots to the field costs USD {B['field']['saving_usd_m']:.1f} million more but cuts truck kilometres by {100 * (1 - field['kpis']['truck_km_m'] / K['truck_km_m']):.0f} percent, and that is the planner's call. "
+          f"Here is the honest number. Against simple planner rules we save USD {B['greedy']['saving_usd_m']:.0f} to {B['airport_first']['saving_usd_m']:.0f} million a year. Against a strong k-means benchmark with exact flows, the saving is only USD {KM['best_saving_usd_m']:.1f} to {KM['median_saving_usd_m']:.1f} million, because transport is a small share of cost. "
+          f"Field depots cost USD {B['field']['saving_usd_m']:.1f} million more. They move {TK:.0f} percent more tonne-kilometres but need an estimated {VK:.0f} percent fewer truck-kilometres, and that is the planner's call. "
           "The plan fails if demand rises more than 13 percent, if yield falls below 0.176, or with five refineries or fewer, and the app says exactly why.")
 cd = CategoryChartData()
-order = [("Airport-first", B["airport_first"]), ("Greedy heuristic", B["greedy"]), ("Field depots", B["field"]), ("Optimised", B["optimised"])]
+order = [("Airport-first", B["airport_first"]["objective"]), ("Greedy heuristic", B["greedy"]["objective"]), ("Field depots", B["field"]["objective"]), ("K-means, median", KM["median"]), ("K-means, best", KM["best"]), ("Optimised", B["optimised"]["objective"])]
 cd.categories = [o[0] for o in order]
-cd.add_series("USD M per year", [round(o[1]["objective"], 1) for o in order])
+cd.add_series("USD M per year", [round(o[1], 1) for o in order])
 gf = s.shapes.add_chart(XL_CHART_TYPE.BAR_CLUSTERED, Inches(0.6), Inches(1.7), Inches(6.9), Inches(4.5), cd)
 ch = gf.chart
 ch.has_legend = False
@@ -224,7 +228,7 @@ pl.data_labels.font.color.rgb = rgb(TEXT)
 ser = pl.series[0]
 ser.format.fill.solid()
 ser.format.fill.fore_color.rgb = rgb("8F8E85")
-pt = ser.points[3]
+pt = ser.points[5]
 pt.format.fill.solid()
 pt.format.fill.fore_color.rgb = rgb(BLUE)
 ca, va = ch.category_axis, ch.value_axis
@@ -244,23 +248,24 @@ for i, (v, l) in enumerate([("+13.3%", "demand beyond feedstock"), ("< 0.176", "
 
 # 6. Trust and impact
 s = slide("The planner stays in control, and can check every number",
-          f"Decision support uses no language model, so it cannot invent a figure. It answers from solver records, reruns the solver for what-ifs, and declines anything the model cannot know, like lifecycle carbon. "
-          f"One honest warning: official demand is about twelve times today's real jet use at these airports, so this is a hub-scale plan. At today's volumes and a 5 percent blend the same model gives about USD {real['kpis']['unit_cost_usd_t'] / 1000:.0f} thousand per tonne. The next step is real moisture data, because that decides whether depots belong in the field. Thank you.")
+          f"Decision support uses no language model, so it cannot invent a figure. It reads solver records, reruns the solver for what-ifs, and refuses anything it cannot map. The planner gets decision limits: past {6 * 1087 * 0.2:,.0f} kilotonnes a seventh plant is needed, and one extra kilotonne costs about USD 30 million. "
+          f"One warning: official demand is about twelve times today's real jet use here, so this is a hub-scale plan. The next step is real moisture data, because that decides whether depots belong in the field. Thank you.")
 card(s, 0.6, 1.8, 6.0, 4.5)
 text(s, 0.85, 1.98, 5.5, 0.4, "Trust", size=20, bold=True, color=BLUE)
 text(s, 0.85, 2.5, 5.5, 3.7, [
     "No language model, so no invented numbers",
     "Each answer lists the solver fields it read",
-    "What-if questions rerun the real solver",
-    "Questions outside the model are declined with a reason",
+    "What-ifs rerun the solver, and refuse if unclear",
     f"A separate audit recomputes {len(base['validation'])} checks from raw flows",
+    "A second solver reached the same cost",
 ], size=20)
 card(s, 6.9, 1.8, 5.8, 2.15)
 text(s, 7.15, 1.98, 5.3, 0.4, "Impact", size=20, bold=True, color=AQUA)
 text(s, 7.15, 2.45, 5.3, 1.4, [
-    [(f"USD {B['greedy']['saving_usd_m']:.0f}M to {B['airport_first']['saving_usd_m']:.0f}M per year", {"bold": True, "size": 24})],
-    "saved against rule-of-thumb layouts, measured",
-], size=16)
+    [(f"Saves USD {B['greedy']['saving_usd_m']:.0f}M to {B['airport_first']['saving_usd_m']:.0f}M a year", {"bold": True, "size": 20}), (" against simple rules", {})],
+    [(f"USD {KM['best_saving_usd_m']:.1f}M to {KM['median_saving_usd_m']:.1f}M", {"bold": True, "size": 20}), (" against k-means, the strong test", {})],
+    f"Shows the cost step at {6 * 1087 * 0.2:,.0f} kt of SAF",
+], size=15)
 card(s, 6.9, 4.15, 5.8, 2.15)
 text(s, 7.15, 4.33, 5.3, 0.4, "Reality check", size=20, bold=True, color=YELLOW)
 text(s, 7.15, 4.8, 5.3, 1.4, "Official demand is about 12 times today's real jet use at these airports, so this is a hub-scale plan. Site moisture data is the next thing to test.", size=16)
