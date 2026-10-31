@@ -93,6 +93,12 @@ fn rings() -> &'static Vec<Vec<[f64; 2]>> {
     R.get_or_init(|| serde_json::from_str(LAND).unwrap())
 }
 
+/// For each official site, whether its coordinates fall on the land mask.
+pub fn sites_on_land() -> &'static Vec<bool> {
+    static S: OnceLock<Vec<bool>> = OnceLock::new();
+    S.get_or_init(|| network().sites.iter().map(|s| on_land(s.lat, s.lon)).collect())
+}
+
 /// Ray casting against the Natural Earth land rings.
 pub fn on_land(lat: f64, lon: f64) -> bool {
     for ring in rings() {

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "saf-site",
+      "runtimeExecutable": "C:\\Hackathon\\airbustrack3ray\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:\\Hackathon\\airbustrack3ray\\docs"],
+      "port": 8765
+    }
+  ]
+}

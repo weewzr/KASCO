@@ -57,6 +57,14 @@ fn land_mask_separates_land_from_sea() {
 }
 
 #[test]
+fn every_refinery_candidate_is_on_land_or_an_airport() {
+    let inst = Instance::new(&Params::default());
+    assert!(inst.cand.len() >= 70);
+    assert!(inst.cand.iter().all(|c| on_land(c.lat, c.lon) || AIRPORTS.contains(&c.id.as_str())));
+    assert!(!inst.cand.iter().any(|c| c.id == "TRK"));
+}
+
+#[test]
 fn min_cost_flow_picks_the_cheaper_path() {
     let mut g = Mcf::new(4);
     let a = g.add(0, 1, 5.0, 1.0);

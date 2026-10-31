@@ -9,6 +9,7 @@ pub fn now_s() -> f64 {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "env")]
 extern "C" {
     fn js_now_ms() -> f64;
 }

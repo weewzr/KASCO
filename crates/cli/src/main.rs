@@ -34,7 +34,16 @@ fn brief(s: &Solution) -> Value {
     })
 }
 
+fn network_json() {
+    let n = saf_engine::data::network();
+    let land = saf_engine::data::sites_on_land();
+    let sites: Vec<Value> = n.sites.iter().enumerate().map(|(i, s)| json!({"id": s.id, "province": s.province, "district": s.district, "kt": s.kt, "lat": s.lat, "lon": s.lon, "on_land": land[i]})).collect();
+    let airports: Vec<Value> = n.airports.iter().map(|a| json!({"iata": a.iata, "name": a.name, "city": a.city, "lat": a.lat, "lon": a.lon, "demand": a.demand})).collect();
+    save("network", &json!({"sites": sites, "airports": airports}));
+}
+
 fn all(secs: f64) {
+    network_json();
     let list = scenarios::all();
     let solved = parallel(list.len(), |i| {
         let (key, p) = &list[i];
@@ -188,6 +197,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         Some("lp") => lp(args.get(2).map_or("model.lp", String::as_str)),
+        Some("network") => network_json(),
         _ => all(args.get(2).and_then(|a| a.parse().ok()).unwrap_or(30.0)),
     }
 }

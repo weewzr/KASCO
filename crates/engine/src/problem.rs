@@ -71,7 +71,10 @@ impl Instance {
         for a in 0..4 {
             e[a] = p.demand[a] * mult;
         }
-        let mut cand: Vec<Cand> = net.sites.iter().map(|s| Cand { id: s.id.clone(), lat: s.lat, lon: s.lon }).collect();
+        // Plants must be on land, so a CSV point just off the coastline stays a biomass
+        // source but cannot host one.
+        let land = crate::data::sites_on_land();
+        let mut cand: Vec<Cand> = net.sites.iter().enumerate().filter(|(i, _)| land[*i]).map(|(_, s)| Cand { id: s.id.clone(), lat: s.lat, lon: s.lon }).collect();
         for (a, ap) in net.airports.iter().enumerate() {
             if a != ISLAND_AIRPORT {
                 cand.push(Cand { id: ap.iata.clone(), lat: ap.lat, lon: ap.lon });
