@@ -38,6 +38,9 @@ main { padding: 18px 24px 8px; max-width: 1400px; margin: 0 auto; }
 .tile span { color: var(--muted); font-size: 12.5px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.grid2 > *, .maps > *, .tiles > * { min-width: 0; }
+.check { flex-wrap: wrap; }
+#scenario2 { max-width: 100%; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .between { justify-content: space-between; }
 .note { color: var(--muted); font-size: 12.5px; margin: 6px 0 12px; }
@@ -92,5 +95,7 @@ a { color: #7fb4f0; }
   .mapbox { height: 460px; }
   #scenario { min-width: 0; width: 100%; }
   .pick { width: 100%; }
-  .grid2 { grid-template-columns: 1fr; }
+  .grid2, .maps { grid-template-columns: minmax(0, 1fr); }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tile b { font-size: 20px; }
 }

@@ -208,7 +208,7 @@ table([
     ["Clustering plus MILP", "Fast but depends on arbitrary cluster counts", "Used only as a starting design"],
     ["Pure metaheuristic", "No bound, so no honest statement of quality", "Rejected"],
 ], [5.2 * cm, 7.6 * cm, 4.2 * cm])
-P("Measurements drove this choice. In a timed run of a general MILP on this problem, 99.1% of runtime sat inside the solver, so a language change alone could not help. The gain came from using the structure. Relaxing supply and demand with multipliers u and &lambda; splits the model into one subproblem per site:")
+P("Measurements drove this choice. In a timed run of a general MILP on an earlier version of this problem, 99.1% of runtime sat inside the solver, so a language change alone could not help. The gain came from using the structure. Relaxing supply and demand with multipliers u and &lambda; splits the model into one subproblem per site:")
 eq(r"L(u,\lambda)=\sum_a\lambda_a E_a-\sum_i u_iB_i+\min_{z}\ \sum_{k,s}z_{ks}\left(G_s+V_{ks}(u,\lambda)\right),\qquad \sum_{k,s}C^R_s z_{ks}\geq\sum_a E_a", 0.38)
 P("Here E<sub>a</sub> is the biomass equivalent of demand, G<sub>s</sub> the annual fixed cost of a plant and V<sub>ks</sub> the best value of site k, found by pairing the cheapest inputs with the dearest outputs. Any multipliers give a valid lower bound, and subgradient steps tighten it. Branching on open and closed sites closes the gap, and each design found is priced exactly by min-cost flow. Sites may be anywhere on land, so a final step alternates a location move and a re-allocation [10], where each plant moves by Weiszfeld iteration [11]:")
 eq(r"\mathbf{p}^{(t+1)}=\left(\sum_m\frac{\omega_m\,\mathbf{p}_m}{\|\mathbf{p}^{(t)}-\mathbf{p}_m\|}\right)\left(\sum_m\frac{\omega_m}{\|\mathbf{p}^{(t)}-\mathbf{p}_m\|}\right)^{-1},\qquad \omega_m=\tau\times\mathrm{flow}_m", 0.46)
@@ -331,7 +331,7 @@ refs = [
     "Cooper, L. (1963). Location-allocation problems. Operations Research 11(3), 331-343.",
     "Weiszfeld, E. (1937). Sur le point pour lequel la somme des distances de n points donnes est minimum. Tohoku Mathematical Journal 43, 355-386.",
     "Huangfu, Q., Hall, J.A.J. (2018). Parallelizing the dual revised simplex method. Mathematical Programming Computation 10, 119-142.",
-    "Kompas (2024). Pertamina pastikan stok BBM, LPG serta avtur di Kalimantan Timur aman, 25 March 2024.",
+    "Pertamina Patra Niaga Kalimantan statements on daily avtur distribution, March 2024, reported in regional press including Kompas, 25 March 2024.",
     "Pontianak Post (2024). Permintaan avtur naik 8% di Bandara Supadio.",
     "Wikipedia airport pages for PNK, PKN, BPN and TRK, citing DGCA and BPS Statistik Transportasi Udara 2024. Accessed 31 October 2026.",
     "Argus Media (2024). Indonesia to require SAF for flights from 2027; Antara News (2026), on the 2027 rollout at Jakarta and Bali.",
