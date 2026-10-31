@@ -1,0 +1,67 @@
+[
+ {
+  "total_demand_kt": 20,
+  "rust_cost": 55.69855703992902,
+  "rust_bound": 55.52355703992902,
+  "rust_gap_pct": 0.31419126329350106,
+  "rust_seconds": 15.7720573,
+  "highs_cost": 55.6985570359999,
+  "highs_bound": 55.6985570359999,
+  "highs_gap_pct": 0.0,
+  "highs_status": "Optimal",
+  "bound_valid": true,
+  "cost_difference_pct": 7.054264781994058e-09
+ },
+ {
+  "total_demand_kt": 50.0,
+  "rust_cost": 67.1256654108539,
+  "rust_bound": 67.0506654108539,
+  "rust_gap_pct": 0.11173073598742411,
+  "rust_seconds": 0.0088317,
+  "highs_cost": 67.1256660279,
+  "highs_bound": 67.1256660279,
+  "highs_gap_pct": 0.0,
+  "highs_status": "Optimal",
+  "bound_valid": true,
+  "cost_difference_pct": -9.19240186780913e-07
+ },
+ {
+  "total_demand_kt": 100,
+  "rust_cost": 86.72853340588986,
+  "rust_bound": 86.57853340588986,
+  "rust_gap_pct": 0.17295346076937002,
+  "rust_seconds": 0.009257900000000001,
+  "highs_cost": 86.7285349339,
+  "highs_bound": 86.7285349339,
+  "highs_gap_pct": 0.0,
+  "highs_status": "Optimal",
+  "bound_valid": true,
+  "cost_difference_pct": -1.7618309037891355e-06
+ },
+ {
+  "total_demand_kt": 200,
+  "rust_cost": 151.17821532428488,
+  "rust_bound": 151.0032153242849,
+  "rust_gap_pct": 0.1157574189010153,
+  "rust_seconds": 0.012335,
+  "highs_cost": 151.17821522690008,
+  "highs_bound": 151.17821522690008,
+  "highs_gap_pct": 0.0,
+  "highs_status": "Optimal",
+  "bound_valid": true,
+  "cost_difference_pct": 6.441721695516148e-08
+ },
+ {
+  "total_demand_kt": 300,
+  "rust_cost": 231.78796105381687,
+  "rust_bound": 231.3249866025485,
+  "rust_gap_pct": 0.19974050816250116,
+  "rust_seconds": 0.058126899999999995,
+  "highs_cost": 231.78796074680002,
+  "highs_bound": 231.78796074680002,
+  "highs_gap_pct": 0.0,
+  "highs_status": "Optimal",
+  "bound_valid": true,
+  "cost_difference_pct": 1.3245590776646996e-07
+ }
+]

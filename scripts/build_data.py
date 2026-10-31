@@ -1,11 +1,9 @@
-"""Build the static data files the optimiser reads.
-
-Run once with network access. Outputs are committed so the app never needs the
-network at run time.
+"""Fetch and prepare the data files the engine compiles in. Run once with network access.
 
     python scripts/build_data.py <folder holding the official Airbus files>
+
+Outputs are committed, so neither the app nor the engine needs the network.
 """
-import csv
 import json
 import shutil
 import sys
@@ -18,49 +16,13 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 OSRM = "http://router.project-osrm.org/table/v1/driving/"
-CHUNK = 40
-
-AIRPORTS = {
-    "PNK": 3284,  # Supadio, Pontianak
-    "PKN": 3910,  # Iskandar, Pangkalan Bun. Not 3294 Sultan Iskandar Muda (Banda Aceh)
-    "BPN": 3919,  # Sultan Aji Muhammad Sulaiman Sepinggan, Balikpapan
-    "TRK": 3920,  # Juwata, Tarakan
-}
-BRIEF_NAMES = {
-    "PNK": "Supadio Intl",
-    "PKN": "Iskandar Intl",
-    "BPN": "Sultan Aji Muhammad Sulaiman Sepinggan Intl",
-    "TRK": "Juwata Intl",
-}
+LAND = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_land.geojson"
 
 
-def extract_airports(src: Path) -> pd.DataFrame:
-    cols = ["id", "name", "city", "country", "iata", "icao", "lat", "lon", "alt", "tz", "dst", "tzdb", "type", "source"]
-    air = pd.read_csv(src, header=None, names=cols, na_values="\\N", encoding="utf-8", quoting=csv.QUOTE_MINIMAL)
-    rows = []
-    for code, oid in AIRPORTS.items():
-        r = air[air.id == oid].iloc[0]
-        assert r.iata == code, (code, r.iata)
-        rows.append(
-            {
-                "iata": code,
-                "brief_name": BRIEF_NAMES[code],
-                "dat_name": r["name"],
-                "city": r.city,
-                "openflights_id": oid,
-                "latitude": float(r.lat),
-                "longitude": float(r.lon),
-            }
-        )
-    return pd.DataFrame(rows)
-
-
-def osrm_block(points: list, sources: list, dests: list) -> np.ndarray:
+def road_matrix(points: list) -> np.ndarray:
+    """All-pairs road km from OSRM on OpenStreetMap. The demo server takes 100 points."""
     coords = ";".join(f"{lon:.5f},{lat:.5f}" for lat, lon in points)
-    s = ";".join(map(str, sources))
-    d = ";".join(map(str, dests))
-    url = f"{OSRM}{coords}?annotations=distance&sources={s}&destinations={d}"
-    req = urllib.request.Request(url, headers={"User-Agent": "airbustrack3ray-hackathon"})
+    req = urllib.request.Request(f"{OSRM}{coords}?annotations=distance", headers={"User-Agent": "airbustrack3ray-hackathon"})
     with urllib.request.urlopen(req, timeout=60) as r:
         j = json.load(r)
     if j.get("code") != "Ok":
@@ -68,32 +30,35 @@ def osrm_block(points: list, sources: list, dests: list) -> np.ndarray:
     return np.array([[np.nan if v is None else v / 1000 for v in row] for row in j["distances"]], dtype=float)
 
 
-def road_matrix(points: list) -> np.ndarray:
-    n = len(points)
-    D = np.full((n, n), np.nan)
-    if n <= 100:
-        idx = list(range(n))
-        return osrm_block(points, idx, idx)
-    for a in range(0, n, CHUNK):
-        ia = list(range(a, min(a + CHUNK, n)))
-        for b in range(0, n, CHUNK):
-            ib = list(range(b, min(b + CHUNK, n)))
-            pts = [points[i] for i in ia] + [points[i] for i in ib]
-            D[np.ix_(ia, ib)] = osrm_block(pts, list(range(len(ia))), list(range(len(ia), len(pts))))
-    return D
+def land_mask() -> list:
+    """Natural Earth 10 m land rings around Borneo, lightly thinned."""
+    with urllib.request.urlopen(LAND, timeout=150) as r:
+        gj = json.load(r)
+    out = []
+    for feat in gj["features"]:
+        g = feat["geometry"]
+        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        for poly in polys:
+            ring = np.array(poly[0])[:, :2]
+            if ring[:, 0].max() < 108 or ring[:, 0].min() > 120 or ring[:, 1].max() < -5 or ring[:, 1].min() > 8:
+                continue
+            step = 2 if len(ring) > 3000 else 1
+            out.append(np.round(ring[::step], 3).tolist())
+    return out
 
 
 def main(official: Path) -> None:
     DATA.mkdir(exist_ok=True)
     shutil.copy(official / "kalimantan_80_locations_6800kt_full_range.csv", DATA / "biomass_sites.csv")
-    air = extract_airports(official / "airports.dat")
-    air.to_csv(DATA / "airports.csv", index=False)
+    shutil.copy(official / "challenge3_airports_4.csv", DATA / "airports.csv")
+    shutil.copy(official / "challenge3_parameters.xlsx", DATA / "challenge3_parameters.xlsx")
     sites = pd.read_csv(DATA / "biomass_sites.csv")
+    air = pd.read_csv(DATA / "airports.csv")
     ids = list(sites.location_id) + list(air.iata)
     pts = list(zip(sites.latitude, sites.longitude)) + list(zip(air.latitude, air.longitude))
-    D = road_matrix(pts)
-    pd.DataFrame(np.round(D, 2), index=ids, columns=ids).to_csv(DATA / "road_km.csv")
-    print("nodes", len(ids), "missing", int(np.isnan(D).sum()))
+    pd.DataFrame(np.round(road_matrix(pts), 2), index=ids, columns=ids).to_csv(DATA / "road_km.csv")
+    (DATA / "borneo_land.json").write_text(json.dumps(land_mask(), separators=(",", ":")))
+    print("done:", len(ids), "nodes")
 
 
 if __name__ == "__main__":

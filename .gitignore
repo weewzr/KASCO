@@ -1,5 +1,6 @@
 target/
 .venv/
+.claude/
 __pycache__/
 *.pyc
 *.tmp

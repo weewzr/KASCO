@@ -1,0 +1,11 @@
+{
+ "solver": "HiGHS 1.15.1",
+ "model_status": "Time limit reached",
+ "objective": 890.3214814360591,
+ "bound": 866.7383521615897,
+ "gap_pct": 2.6488330076491753,
+ "columns": 6440,
+ "rows": 6524,
+ "time_limit_s": 480.0,
+ "rust_candidate_objective": null
+}

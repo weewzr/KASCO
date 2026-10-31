@@ -402,7 +402,8 @@ function renderEvaluation() {
       <tr><td>Cost after continuous refinement</td><td class="n">${usd(B.optimised.objective, 2)}</td></tr>
       ${H ? `<tr><td>${esc(H.solver)} cost, same model</td><td class="n">${usd(H.objective, 2)}</td></tr><tr><td>${esc(H.solver)} lower bound</td><td class="n">${usd(H.bound, 2)}</td></tr>` : ""}
     </table></div>
-    <p class="note">The bound applies to the candidate-site problem. Continuous refinement finds a local optimum with no global proof.${H ? " HiGHS is an independent solver reading the same model from a plain LP file." : ""}</p></div>
+    <p class="note">The bound applies to the candidate-site problem. Continuous refinement finds a local optimum with no global proof.${H ? " HiGHS is an independent solver reading the same model from a plain LP file." : ""}</p>
+    ${state.check ? `<h3 style="margin-top:12px">Is the Rust bound valid?</h3><p class="note">On smaller demand levels HiGHS proves the optimum, so the Rust bound must sit at or below it.</p><div class="scroll"><table><tr><th class="n">Demand, kt</th><th class="n">Rust cost</th><th class="n">Rust bound</th><th class="n">HiGHS optimum</th><th>Result</th></tr>${state.check.map((r) => `<tr><td class="n">${fmt(r.total_demand_kt)}</td><td class="n">${fmt(r.rust_cost, 3)}</td><td class="n">${fmt(r.rust_bound, 3)}</td><td class="n">${fmt(r.highs_cost, 3)}</td><td><span class="pill ${r.bound_valid ? "good" : "bad"}">${r.bound_valid ? "Valid" : "Invalid"}</span></td></tr>`).join("")}</table></div>` : ""}</div>
   </div>
   <div class="grid2">
     <div class="card"><h3>Change in annual cost when one input moves 20%</h3><div class="chart tall"><canvas id="tornado"></canvas></div>
@@ -485,8 +486,8 @@ function refresh() {
 async function start() {
   $("#tabs").innerHTML = TABS.map(([id, l]) => `<button role="tab" data-t="${id}">${l}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach((b) => { b.onclick = () => showTab(b.dataset.t); });
-  const [index, net, base, ladder, sens, highs] = await Promise.all(["index", "network", "baselines", "ladder", "sensitivity", "highs_check"].map(getJson));
-  Object.assign(state, { net, base, ladder, sens, highs });
+  const [index, net, base, ladder, sens, highs, check] = await Promise.all(["index", "network", "baselines", "ladder", "sensitivity", "highs_check", "bound_check"].map(getJson));
+  Object.assign(state, { net, base, ladder, sens, highs, check });
   state.net.coords = {};
   net.sites.forEach((s) => { state.net.coords[s.id] = [s.lat, s.lon]; });
   net.airports.forEach((a) => { state.net.coords[a.iata] = [a.lat, a.lon]; });

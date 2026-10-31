@@ -125,8 +125,8 @@ fn all(secs: f64) {
 }
 
 /// Writes the strong candidate-site formulation in CPLEX LP format, for the official case.
-fn lp(path: &str) {
-    let p = Params::default();
+fn lp(path: &str, demand: f64) {
+    let p = Params { demand: [demand; 4], ..Default::default() };
     let inst = Instance::new(&p);
     let (nf, nk) = (inst.farm_kt.len(), inst.cand.len());
     let mut s = String::from("Minimize\n obj:");
@@ -196,8 +196,15 @@ fn lp(path: &str) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
-        Some("lp") => lp(args.get(2).map_or("model.lp", String::as_str)),
+        Some("lp") => lp(args.get(2).map_or("model.lp", String::as_str), args.get(3).and_then(|a| a.parse().ok()).unwrap_or(300.0)),
         Some("network") => network_json(),
+        Some("bound") => {
+            // Reports the Rust cost and bound for one demand level, for comparison with HiGHS.
+            let d: f64 = args.get(2).and_then(|a| a.parse().ok()).unwrap_or(300.0);
+            let t: f64 = args.get(3).and_then(|a| a.parse().ok()).unwrap_or(30.0);
+            let s = run(&Params { demand: [d; 4], refine: false, time_limit_s: t, ..Default::default() });
+            println!("{}", json!({"demand_each": d, "status": s.status, "objective": s.objective, "bound": s.bound, "gap": s.gap, "runtime_s": s.runtime_s}));
+        }
         _ => all(args.get(2).and_then(|a| a.parse().ok()).unwrap_or(30.0)),
     }
 }
