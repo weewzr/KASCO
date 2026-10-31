@@ -95,7 +95,12 @@ a { color: #7fb4f0; }
 #gPanel { position: fixed; right: 18px; bottom: 18px; z-index: 2000; width: min(420px, calc(100vw - 36px)); max-height: calc(100vh - 36px); overflow: auto; background: #10233a; border: 1px solid #27445f; border-radius: 10px; padding: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .5); }
 #gPanel[hidden], #gOpen[hidden], #gKeyRow[hidden] { display: none; }
 #gPanel h3 { margin: 0; }
-#gOut .btn { margin-top: 6px; }
+#gOut ul { margin: 4px 0; padding-left: 18px; }
+#gOut li { margin: 2px 0; }
+#gOut h4 { margin: 9px 0 3px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+#gOut .chip { margin: 3px 0; }
+#gOut details { font-size: 12.5px; color: var(--muted); }
+.gNext .note { margin-left: 4px; }
 .pointed { outline: 3px solid #19b5a5; outline-offset: 3px; border-radius: 8px; }
 @media (max-width: 720px) {
   .top, #tabs { padding-left: 16px; padding-right: 16px; }
