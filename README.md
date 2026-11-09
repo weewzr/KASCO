@@ -4,7 +4,7 @@ AI-Driven Optimisation for a More Sustainable Aviation Future
 
 Airbus Challenge 3, Autonomous SG 2026. Built by Wee Zhern Ray, Year 3 Chemical Engineering, NUS.
 
-**Live app:** https://weewzr.github.io/airbustrack3ray/
+**Live app:** https://weewzr.github.io/KASCO/
 
 KASCO is a working prototype of a planning tool for a Sustainable Aviation Fuel network across Kalimantan. It picks refinery and depot locations and sizes, routes biomass and SAF to the four international airports, and shows the proof behind each number. The solver is written in Rust and compiled to WebAssembly, so the whole product runs in the browser from GitHub Pages with no server. An optional Claude Sonnet 5.5 analyst answers free-form questions from solver data, using the viewer's own API key.
 
