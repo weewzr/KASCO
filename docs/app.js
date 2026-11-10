@@ -395,10 +395,11 @@ function siteTableHtml() {
 
 function siteBoxHtml() {
   const roles = ["all", "Biomass site", "Depot", "Refinery", "Airport"];
+  const plural = { all: "All locations", "Biomass site": "Biomass sites", Depot: "Depots", Refinery: "Refineries", Airport: "Airports" };
   return `<div class="card"><h3>Selected location</h3><div id="selDetail" class="detail" aria-live="polite"><p class="note">Nothing selected. Click a marker, or choose a name in the site list below.</p></div></div>
   <div class="card" id="siteBox"><h3>Site list</h3>
     <p class="note">The same locations as the map, for keyboard use. Choose a name to show its figures above and centre the map on it. The column buttons sort the list.</p>
-    <div class="filters"><label>Show <select id="siteRole">${roles.map((r) => `<option value="${r}"${state.siteRole === r ? " selected" : ""}>${r === "all" ? "All locations" : r + "s"}</option>`).join("")}</select></label></div>
+    <div class="filters"><label>Show <select id="siteRole">${roles.map((r) => `<option value="${r}"${state.siteRole === r ? " selected" : ""}>${plural[r]}</option>`).join("")}</select></label></div>
     <div id="siteTable">${siteTableHtml()}</div></div>`;
 }
 

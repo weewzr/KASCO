@@ -144,6 +144,8 @@ async function behaviour(browser, base) {
   await page.select('#siteRole', 'Refinery');
   const refRows = await page.evaluate(() => document.querySelectorAll('#siteList tbody tr').length);
   check('site list filters by role', refRows === data.refineries.length, `${refRows} vs ${data.refineries.length}`);
+  const roleLabels = await page.$$eval('#siteRole option', (o) => o.map((x) => x.textContent).join(' | '));
+  check('site role filter uses correct plurals', roleLabels === 'All locations | Biomass sites | Depots | Refineries | Airports', roleLabels);
   await press(page, '#siteList tbody button.pick-row');
   await sleep(600);
   const sel = await page.evaluate(() => ({ detail: document.querySelector('#selDetail').textContent, popup: !!document.querySelector('#map1 .leaflet-popup'), cur: document.querySelectorAll('#siteList tr[aria-current=true]').length }));

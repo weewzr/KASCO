@@ -161,7 +161,7 @@ The before values for axe come from a run against the baseline commit with the s
 
 - `cargo test --release -p saf_engine`: 38 passed (target directory outside the repository).
 - `python scripts/check_official.py` in a copy of `data` and `docs/data`: 30 checks, all passed, output identical to the committed `official_check.json`.
-- `npm run check:ui`: 63 of 63 checks passed (axe on 28 page states and again with the analyst dialog open, keyboard pattern, marker names, Enter and Escape on a marker, site list, validation, solver status and cancel, a short real solve, labels, chart text, reduced motion, the Overview cost against the committed solver output, and every committed scenario on four tabs).
+- `npm run check:ui`: 64 of 64 checks passed (axe on 28 page states and again with the analyst dialog open, keyboard pattern, marker names, Enter and Escape on a marker, site list, validation, solver status and cancel, a short real solve, labels, chart text, reduced motion, the Overview cost against the committed solver output, and every committed scenario on four tabs).
 - The HiGHS cross-check scripts (`verify_bound.py`, `verify_depots.py`, `verify_highs.py`) were not rerun. They need HiGHS and long solves, and the engine, data and WASM file are byte-identical to the baseline.
 
 ### Known limitations
