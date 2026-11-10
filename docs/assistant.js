@@ -291,14 +291,14 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
   function mount() {
     const box = document.createElement("div");
     box.innerHTML = `<button class="btn" id="gOpen">Ask Claude Sonnet 5.5</button>
-    <aside id="gPanel" role="dialog" aria-modal="false" aria-labelledby="gTitle" hidden>
+    <div id="gPanel" role="dialog" aria-modal="false" aria-labelledby="gTitle" hidden>
       <div class="row between"><h3 id="gTitle">Ask in your own words <span class="src-tag ai">Language model, not verified</span></h3><button class="btn ghost" id="gClose">Close</button></div>
       <p class="note">Optional analyst. Claude Sonnet 5.5 answers from the solver's data, and any line with a figure not found in that data is removed. The wording and reasoning are not checked, so treat every answer as an AI-written explanation and not as a solver result.</p>
       <div id="gKeyRow" class="ask"><input type="password" id="gKey" aria-label="Anthropic API key" placeholder="Paste your Anthropic API key" autocomplete="off" spellcheck="false"><button class="btn" id="gSave">Use key</button></div>
       <p class="note" id="gKeyNote">Your key stays in this tab's memory, is sent only to api.anthropic.com and is never saved.</p>
       <div class="ask"><input type="text" id="gQ" aria-label="Your question" placeholder="For example: is the Tarakan supply risky?"><button class="btn" id="gAsk">Ask</button></div>
       <div id="gOut" role="log" aria-live="polite" aria-label="Language-model answers"></div>
-    </aside>`;
+    </div>`;
     document.body.append(box);
     const closePanel = () => { $("#gPanel").hidden = true; $("#gOpen").hidden = false; $("#gOpen").focus(); };
     $("#gOpen").onclick = () => {

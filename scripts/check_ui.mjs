@@ -155,6 +155,9 @@ async function behaviour(browser, base) {
   await sleep(500);
   const kb = await page.evaluate(() => ({ detail: document.querySelector('#selDetail').textContent, popup: !!document.querySelector('#map1 .leaflet-popup') }));
   check('Enter on a focused map marker opens its popup and fills the details panel', /Airport/.test(kb.detail) && kb.popup, JSON.stringify(kb).slice(0, 200));
+  await page.keyboard.press('Escape');
+  await sleep(300);
+  check('Escape closes the popup of a focused map marker', !(await page.evaluate(() => !!document.querySelector('#map1 .leaflet-popup'))));
 
   // Result labels
   await openTab(page, 'scenarios');
@@ -201,6 +204,9 @@ async function behaviour(browser, base) {
   await press(page, '#gOpen');
   const gp = await page.evaluate(() => ({ role: document.querySelector('#gPanel').getAttribute('role'), tag: /not verified/i.test(document.querySelector('#gPanel').textContent), focus: document.activeElement.id }));
   check('analyst panel is a labelled dialog, says not verified and takes focus', gp.role === 'dialog' && gp.tag && gp.focus === 'gKey', JSON.stringify(gp));
+  await page.evaluate(axeSource);
+  const dv = await page.evaluate(async () => (await axe.run(document, { resultTypes: ['violations'] })).violations.map((x) => `${x.id} (${x.impact}) x${x.nodes.length}`));
+  check('axe with the analyst panel open', dv.length === 0, dv.join('; '));
   await page.keyboard.press('Escape');
   const esc = await page.evaluate(() => ({ hidden: document.querySelector('#gPanel').hidden, focus: document.activeElement.id }));
   check('Escape closes the analyst panel and returns focus', esc.hidden && esc.focus === 'gOpen', JSON.stringify(esc));

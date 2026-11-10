@@ -131,7 +131,8 @@ function chartLabel(id, cfg) {
   const labels = (cfg.data && cfg.data.labels) || [];
   const sets = (cfg.data && cfg.data.datasets) || [];
   if (labels.length && labels.length * sets.length <= 24) {
-    return `${title}. Categories: ${labels.join(", ")}. ${sets.map((d) => `${d.label}: ${d.data.map((v) => (v === null || v === undefined ? "n/a" : fmt(v, 1))).join(", ")}`).join(". ")}.`;
+    // Semicolons separate the items because category names and formatted numbers can contain commas.
+    return `${title}. Categories: ${labels.join("; ")}. ${sets.map((d) => `${d.label}: ${d.data.map((v) => (v === null || v === undefined ? "n/a" : fmt(v, 1))).join("; ")}`).join(". ")}.`;
   }
   if (labels.length) return `${title}. Bar chart with ${labels.length} categories and ${sets.length} series: ${sets.map((d) => d.label).join(", ")}.`;
   return `${title}. Line chart of ${sets.reduce((a, d) => a + d.data.length, 0)} points.`;
@@ -270,6 +271,8 @@ function bar(u) { return `<div class="bar"><i style="width:${Math.min(100, 100 *
 function initMap(id) {
   if (state.maps[id]) return state.maps[id];
   const m = L.map(id, { zoomControl: true, zoomAnimation: !REDUCED, fadeAnimation: !REDUCED, markerZoomAnimation: !REDUCED }).setView([-0.9, 113.6], 6);
+  // Leaflet closes a popup on Escape only while the map container itself has focus. This also covers a focused marker.
+  m.getContainer().addEventListener("keydown", (e) => { if (e.key === "Escape") m.closePopup(); });
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { attribution: "Tiles &copy; Esri, HERE, Garmin, OpenStreetMap contributors", maxZoom: 12 }).addTo(m);
   const lg = L.control({ position: "bottomleft" });
   lg.onAdd = () => {
