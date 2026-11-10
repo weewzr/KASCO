@@ -129,7 +129,14 @@ Commands are in the next section. Lighthouse used Edge with `--headless=new`, tw
 | mobile | Baseline 41194fa | 88 / 89 | 100 / 100 | 2048 / 2033 | 2048 / 2033 | 186 / 144 | 0.160 / 0.160 | 362 / 362 |
 | mobile | This branch | 89 / 89 | 100 / 100 | 2237 / 2033 | 2237 / 2033 | 327 / 346 | 0.011 / 0.011 | 395 / 395 |
 
-Each cell shows run 1 and run 2. Performance scores are equal within run variance. Transfer grows by 33 KiB uncompressed, which is the added script, style and markup. Under Lighthouse's 4x CPU throttle, mobile total blocking time rises from 144 and 186 ms to 327 and 346 ms. Desktop layout shift moves from 0.074 to 0.091 and mobile layout shift falls from 0.160 to 0.011. Timed in the page without throttling, rendering the Overview takes 16.0 ms before and 16.7 ms after (median of 8), and building the Optimisation form takes 0.5 ms before and 1.8 ms after. The cause of the higher mobile blocking time was not isolated. The Lighthouse accessibility score is 100 for both builds because it uses a subset of the axe rules, which is why the full axe run is reported below.
+Each cell shows run 1 and run 2. A second batch alternated the two builds on mobile, three runs each, to separate build effects from drift over time:
+
+| Mobile, alternating | Performance | TBT, ms | FCP, ms | CLS |
+|---|---|---|---|---|
+| Baseline 41194fa | 94 / 93 / 92 | 79 / 273 / 238 | 2407 / 1791 / 2127 | 0 / 0.011 / 0.011 |
+| This branch | 92 / 94 / 89 | 258 / 248 / 332 | 2056 / 1752 / 2201 | 0 / 0.011 / 0.011 |
+
+The runs vary more between repeats of the same build than between the two builds. In the first batch the branch showed higher mobile blocking time (327 and 346 ms against 186 and 144 ms) and a higher desktop layout shift (0.091 against 0.074). The alternating batch gives medians of 238 ms for the baseline and 258 ms for the branch, and the same layout shift for both, so this sample can neither show nor rule out a small slowdown. What is certain is the size: transfer grows by 33 KiB uncompressed, which is the added script, style and markup. Timed in the page without throttling, rendering the Overview takes 16.0 ms before and 16.7 ms after (median of 8), and building the Optimisation form takes 0.5 ms before and 1.8 ms after. The Lighthouse accessibility score is 100 for both builds because it uses a subset of the axe rules, which is why the full axe run is reported below.
 
 | Measure | Before | After |
 |---|---|---|
