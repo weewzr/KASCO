@@ -1,0 +1,14 @@
+{
+  "name": "kasco-dev-checks",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Development-only front-end checks for the static site in docs/. Nothing in this file is served, bundled or needed to run the app.",
+  "license": "MIT",
+  "scripts": {
+    "check:ui": "node scripts/check_ui.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "puppeteer-core": "24.43.1"
+  }
+}
