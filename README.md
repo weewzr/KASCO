@@ -126,7 +126,7 @@ How each number was obtained:
 - axe-core 4.14.0: `npm run check:ui` for the branch. The baseline figures come from the same rules, pages and viewports run against commit 41194fa.
 - Lighthouse 12.8.2: `lighthouse http://127.0.0.1:<port>/index.html [--preset=desktop] --port=<debugging port> --only-categories=performance,accessibility --output=json`, attached to an Edge started with `--headless=new --remote-debugging-port=<port>`. Each build was served by `python -m http.server` from its own `docs` folder (no compression): commit 41194fa and this branch.
 - In-page timing: `renderOverview()` and `renderOptimise()` called eight times each in the page, a forced layout after every call, median reported.
-- Island sizes: esbuild bundles of each probe with `--bundle --minify --format=iife --jsx=automatic`, then `gzip -9`. Mount times are `performance.now()` around the React mount in headless Edge.
+- Island sizes: esbuild bundles of each probe with `--bundle --minify --format=iife --jsx=automatic`, then `gzip -9`. Mount time is `performance.now()` from the start of the bundle to the first element appearing in `#root` (a MutationObserver), in headless Edge, median of five.
 
 | Form factor | Build | Performance | Accessibility | FCP, ms | LCP, ms | TBT, ms | CLS | Transfer, KiB |
 |---|---|---|---|---|---|---|---|---|
