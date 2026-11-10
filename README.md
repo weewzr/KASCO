@@ -120,7 +120,13 @@ The dark palette and its CSS custom properties are unchanged apart from two toke
 
 ### Measurements
 
-Commands are in the next section. Lighthouse used Edge with `--headless=new`, two runs per case against a plain `python -m http.server` (no compression), baseline commit 41194fa and this branch.
+How each number was obtained:
+
+- Sizes: `git show <revision>:docs/app.js | gzip -9 | wc -c`, and the same for the other files, with line endings normalised to LF.
+- axe-core 4.14.0: `npm run check:ui` for the branch. The baseline figures come from the same rules, pages and viewports run against commit 41194fa.
+- Lighthouse 12.8.2: `lighthouse http://127.0.0.1:<port>/index.html [--preset=desktop] --port=<debugging port> --only-categories=performance,accessibility --output=json`, attached to an Edge started with `--headless=new --remote-debugging-port=<port>`. Each build was served by `python -m http.server` from its own `docs` folder (no compression): commit 41194fa and this branch.
+- In-page timing: `renderOverview()` and `renderOptimise()` called eight times each in the page, a forced layout after every call, median reported.
+- Island sizes: esbuild bundles of each probe with `--bundle --minify --format=iife --jsx=automatic`, then `gzip -9`. Mount times are `performance.now()` around the React mount in headless Edge.
 
 | Form factor | Build | Performance | Accessibility | FCP, ms | LCP, ms | TBT, ms | CLS | Transfer, KiB |
 |---|---|---|---|---|---|---|---|---|
@@ -136,7 +142,7 @@ Each cell shows run 1 and run 2. A second batch alternated the two builds on mob
 | Baseline 41194fa | 94 / 93 / 92 | 79 / 273 / 238 | 2407 / 1791 / 2127 | 0 / 0.011 / 0.011 |
 | This branch | 92 / 94 / 89 | 258 / 248 / 332 | 2056 / 1752 / 2201 | 0 / 0.011 / 0.011 |
 
-The runs vary more between repeats of the same build than between the two builds. In the first batch the branch showed higher mobile blocking time (327 and 346 ms against 186 and 144 ms) and a higher desktop layout shift (0.091 against 0.074). The alternating batch gives medians of 238 ms for the baseline and 258 ms for the branch, and the same layout shift for both, so this sample can neither show nor rule out a small slowdown. What is certain is the size: transfer grows by 33 KiB uncompressed, which is the added script, style and markup. Timed in the page without throttling, rendering the Overview takes 16.0 ms before and 16.7 ms after (median of 8), and building the Optimisation form takes 0.5 ms before and 1.8 ms after. The Lighthouse accessibility score is 100 for both builds because it uses a subset of the axe rules, which is why the full axe run is reported below.
+The runs vary more between repeats of the same build than between the two builds. In the first batch the branch showed higher mobile blocking time (327 and 346 ms against 186 and 144 ms) and a higher desktop layout shift (0.091 against 0.074). The alternating batch gives medians of 238 ms for the baseline and 258 ms for the branch, and the same layout shift for both, so this sample can neither show nor rule out a small slowdown. What is certain is the size: transfer grows by 33 KiB uncompressed, which is the added code and markup. Timed in the page without throttling, rendering the Overview takes 16.0 ms before and 16.7 ms after (median of 8), and building the Optimisation form takes 0.5 ms before and 1.8 ms after. The Lighthouse accessibility score is 100 for both builds because it uses a subset of the axe rules, which is why the full axe run is reported below.
 
 | Measure | Before | After |
 |---|---|---|
