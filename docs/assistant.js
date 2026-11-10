@@ -233,7 +233,7 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
       return ok;
     });
     const next = input.explore_next.filter((n) => n.panel !== input.panel).slice(0, 2);
-    const d = add(box, `${top}
+    const d = add(box, `<p class="gAi">AI-written, not verified. Figures are traced to solver data. The reasoning is not.</p>${top}
       ${points.map((p) => `<div class="gPoint"><p>${esc(tidy(p.fact))}${p.panel !== "none" ? ` ${link(p.panel, name(p.panel))}` : ""}</p><p class="gMean"><b>What does it mean?</b> ${esc(tidy(p.meaning))}</p></div>`).join("")}
       ${actions.length ? `<h4>What to do</h4><ul>${actions.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
       ${removed ? `<p class="note">${removed} line${removed > 1 ? "s" : ""} removed: a figure could not be found in the data.</p>` : ""}
@@ -268,7 +268,7 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
         if (final) { wait.remove(); show(box, final.input, pool); break; }
         if (!uses.length) {
           const lines = r.content.filter((b) => b.type === "text").flatMap((b) => b.text.split("\n")).filter((l) => l.trim() && traced(l, pool));
-          add(box, lines.length ? `<ul>${lines.map((l) => `<li>${esc(l.replace(/^[-•\s]+/, ""))}</li>`).join("")}</ul>` : "No answer could be shown. Please ask again.");
+          add(box, lines.length ? `<p class="gAi">AI-written, not verified. Figures are traced to solver data. The reasoning is not.</p><ul>${lines.map((l) => `<li>${esc(l.replace(/^[-•\s]+/, ""))}</li>`).join("")}</ul>` : "No answer could be shown. Please ask again.");
           break;
         }
         const results = [];
@@ -291,17 +291,23 @@ ${Object.entries(PANELS).map(([id, p]) => `- ${id}: ${p[2]}`).join("\n")}`;
   function mount() {
     const box = document.createElement("div");
     box.innerHTML = `<button class="btn" id="gOpen">Ask Claude Sonnet 5.5</button>
-    <aside id="gPanel" hidden>
-      <div class="row between"><h3>Ask in your own words</h3><button class="btn ghost" id="gClose">Close</button></div>
-      <p class="note">Optional analyst. Claude Sonnet 5.5 answers from the solver's data, and any line with a figure not found in that data is removed.</p>
-      <div id="gKeyRow" class="ask"><input type="password" id="gKey" placeholder="Paste your Anthropic API key" autocomplete="off" spellcheck="false"><button class="btn" id="gSave">Use key</button></div>
+    <aside id="gPanel" role="dialog" aria-modal="false" aria-labelledby="gTitle" hidden>
+      <div class="row between"><h3 id="gTitle">Ask in your own words <span class="src-tag ai">Language model, not verified</span></h3><button class="btn ghost" id="gClose">Close</button></div>
+      <p class="note">Optional analyst. Claude Sonnet 5.5 answers from the solver's data, and any line with a figure not found in that data is removed. The wording and reasoning are not checked, so treat every answer as an AI-written explanation and not as a solver result.</p>
+      <div id="gKeyRow" class="ask"><input type="password" id="gKey" aria-label="Anthropic API key" placeholder="Paste your Anthropic API key" autocomplete="off" spellcheck="false"><button class="btn" id="gSave">Use key</button></div>
       <p class="note" id="gKeyNote">Your key stays in this tab's memory, is sent only to api.anthropic.com and is never saved.</p>
-      <div class="ask"><input type="text" id="gQ" placeholder="For example: is the Tarakan supply risky?"><button class="btn" id="gAsk">Ask</button></div>
-      <div id="gOut"></div>
+      <div class="ask"><input type="text" id="gQ" aria-label="Your question" placeholder="For example: is the Tarakan supply risky?"><button class="btn" id="gAsk">Ask</button></div>
+      <div id="gOut" role="log" aria-live="polite" aria-label="Language-model answers"></div>
     </aside>`;
     document.body.append(box);
-    $("#gOpen").onclick = () => { $("#gPanel").hidden = false; $("#gOpen").hidden = true; };
-    $("#gClose").onclick = () => { $("#gPanel").hidden = true; $("#gOpen").hidden = false; };
+    const closePanel = () => { $("#gPanel").hidden = true; $("#gOpen").hidden = false; $("#gOpen").focus(); };
+    $("#gOpen").onclick = () => {
+      $("#gPanel").hidden = false;
+      $("#gOpen").hidden = true;
+      ($("#gKeyRow").hidden ? $("#gQ") : $("#gKey")).focus();
+    };
+    $("#gClose").onclick = closePanel;
+    $("#gPanel").onkeydown = (e) => { if (e.key === "Escape") closePanel(); };
     $("#gSave").onclick = () => {
       apiKey = $("#gKey").value.trim();
       $("#gKey").value = "";
