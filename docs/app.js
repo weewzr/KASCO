@@ -309,7 +309,7 @@ function drawNetwork(id, s) {
   h.reg = reg;
   const track = (key, title, content, mk) => {
     reg[key] = { mk, title, content };
-    if (id === "map1") mk.on("click", () => showDetail(key, false));
+    if (id === "map1") mk.on("popupopen", () => showDetail(key, false));
   };
   state.net.sites.forEach((x) => {
     const q = used[x.id] || 0;
@@ -577,7 +577,7 @@ function renderOptimise() {
     ${grp("Plants and capital", GROUPS[2][1], GROUPS[2][2].map(fld).join("") + sel(SELECTS[0]))}
     ${grp("Transport", GROUPS[3][1], GROUPS[3][2].map(fld).join("") + sel(SELECTS[1]))}
     ${grp("Run settings", "How long the search may run, and what the result is called.", fld(["Solver time limit", "time_limit_s", 12, 1, "seconds"]) + `<div class="fld"><label for="f_name">Name this run</label><input type="text" id="f_name" value="Custom run"></div>`)}
-    <div id="screen" class="screen" aria-live="polite"></div>
+    <div id="screen" class="screen"></div>
     <p id="chgState" class="note"></p>
     <div class="runbar"><button class="btn" id="run" type="button">Run solver</button><button class="btn danger" id="cancel" type="button" hidden>Cancel run</button><button class="btn ghost" id="reset" type="button">Reset to official inputs</button>
       <span class="runtimer" id="runTimer" hidden aria-hidden="true"><progress id="runProg" max="1" value="0"></progress> <span id="runClock" class="note"></span></span></div>
