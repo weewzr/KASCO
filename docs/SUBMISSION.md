@@ -2,19 +2,19 @@
 
 ## Submission title
 
-KASCO — Kalimantan SAF Supply Chain Optimiser
+KASCO: Kalimantan SAF Supply Chain Optimiser
 
 ## Project materials
 
-Live prototype: https://weewzr.github.io/airbustrack3ray/
+Live prototype: https://weewzr.github.io/KASCO/
 
-GitHub repository: https://github.com/weewzr/airbustrack3ray
+GitHub repository: https://github.com/weewzr/KASCO
 
-Technical report: https://weewzr.github.io/airbustrack3ray/reports/KASCO_Technical_Report.pdf
+Technical report: https://weewzr.github.io/KASCO/reports/KASCO_Technical_Report.pdf
 
-Presentation: https://weewzr.github.io/airbustrack3ray/reports/KASCO_Pitch.pptx
+Presentation: https://weewzr.github.io/KASCO/reports/KASCO_Pitch.pptx
 
-Cover image: https://weewzr.github.io/airbustrack3ray/reports/KASCO_Cover.jpg
+Cover image: https://weewzr.github.io/KASCO/reports/KASCO_Cover.jpg
 
 ## Summary (138 words)
 
