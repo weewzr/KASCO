@@ -1,0 +1,42 @@
+/*
+ * tokens.core.css  version 1.0.0  (2026-11-24)
+ * Shared core design tokens for the weewzr portfolio repositories.
+ * Source of truth: docs/DESIGN_SYSTEM.md in the weewzr/weewzr repository (shared core section).
+ * This file is copied, not linked. Site colours and typefaces stay in each repository's own style sheet.
+ * Holds spacing, radii, durations, focus width, minimum sizes and the colour-vision-safe (Okabe-Ito) palette only.
+ */
+:root {
+  /* Spacing, 4 px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  /* Radii */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  /* Motion: colour and opacity only, except explanatory figures */
+  --dur-fast: 120ms;
+  --dur-base: 150ms;
+  --dur-explain: 250ms;
+  /* Focus ring: 2 px outline, 2 px offset */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+  /* Minimum sizes */
+  --min-text: 13px;
+  --min-tick: 12px;
+  --min-target: 44px;
+  /* Colour-vision-safe categorical palette (Okabe-Ito) */
+  --cvd-1: #0072B2;
+  --cvd-2: #D55E00;
+  --cvd-3: #009E73;
+  --cvd-4: #E69F00;
+  --cvd-5: #56B4E9;
+  --cvd-6: #CC79A7;
+  --cvd-7: #F0E442;
+}

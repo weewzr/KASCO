@@ -85,8 +85,10 @@ const rpc = (cmd, payload) => new Promise((res, rej) => {
   worker.postMessage({ id, cmd, body: JSON.stringify(payload) });
 });
 
+// Result JSON is cached normally. Bump DATA_V whenever any file in docs/data changes, so a stale copy is never served.
+const DATA_V = 1;
 async function getJson(name) {
-  const r = await fetch(`data/${name}.json`, { cache: "no-store" });
+  const r = await fetch(`data/${name}.json?v=${DATA_V}`);
   if (!r.ok) return null;
   return r.json();
 }
@@ -276,10 +278,12 @@ function initMap(id) {
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", { attribution: "Tiles &copy; Esri, HERE, Garmin, OpenStreetMap contributors", maxZoom: 12 }).addTo(m);
   const lg = L.control({ position: "bottomleft" });
   lg.onAdd = () => {
-    const e = L.DomUtil.create("div", "legend");
+    // A <details> so the legend can be folded. It starts folded on a phone, where the open legend covered much of the map.
+    const e = L.DomUtil.create("details", "legend");
+    e.open = !window.matchMedia("(max-width: 720px)").matches;
     e.setAttribute("role", "group");
     e.setAttribute("aria-label", "Map legend");
-    e.innerHTML = `<b>Places</b><br><i style="background:${ROLE.farm};border-radius:50%"></i>Biomass site, faded if unused<br><i style="background:${ROLE.depot};transform:rotate(45deg)"></i>Depot<br><i style="background:${ROLE.ref}"></i>Refinery<br><i style="background:${ROLE.air};border-radius:50%"></i>Airport<hr><b>Flows, line width shows kt per year</b><br><span class="ln" style="border-color:${ROLE.farm}"></span>Biomass, site to depot<br><span class="ln" style="border-color:${ROLE.depot}"></span>Biomass, depot to refinery<br><span class="ln" style="border-color:${ROLE.air}"></span>SAF, refinery to airport`;
+    e.innerHTML = `<summary>Legend</summary><b>Places</b><br><i style="background:${ROLE.farm};border-radius:50%"></i>Biomass site, faded if unused<br><i style="background:${ROLE.depot};transform:rotate(45deg)"></i>Depot<br><i style="background:${ROLE.ref}"></i>Refinery<br><i style="background:${ROLE.air};border-radius:50%"></i>Airport<hr><b>Flows, line width shows kt per year</b><br><span class="ln" style="border-color:${ROLE.farm}"></span>Biomass, site to depot<br><span class="ln" style="border-color:${ROLE.depot}"></span>Biomass, depot to refinery<br><span class="ln" style="border-color:${ROLE.air}"></span>SAF, refinery to airport`;
     L.DomEvent.disableClickPropagation(e);
     return e;
   };
@@ -348,7 +352,7 @@ function drawNetwork(id, s) {
   state.net.airports.forEach((a, i) => {
     const content = `<div class="pop-h">${esc(a.name)}</div><div class="pop-s">${esc(a.city)}${i === 3 ? ", island, barge last leg" : ""}</div>${popTable([["SAF demand", `${fmt(s.kpis.demand_by_airport ? s.kpis.demand_by_airport[i] : 0, 1)} kt/yr`], ["SAF delivered", `${fmt(s.kpis.delivered_by_airport ? s.kpis.delivered_by_airport[i] : 0, 1)} kt/yr`]])}`;
     const at = `Airport ${a.iata}, ${a.name}`;
-    const mk = L.marker([a.lat, a.lon], { zIndexOffset: 1000, title: at, alt: at, icon: L.divIcon({ className: "", html: `<div style="width:30px;height:30px;border-radius:50%;background:${ROLE.air};border:2px solid #fff;color:#fff;font:700 10px/26px Arial;text-align:center">${a.iata}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(content).addTo(lay.air);
+    const mk = L.marker([a.lat, a.lon], { zIndexOffset: 1000, title: at, alt: at, icon: L.divIcon({ className: "", html: `<div style="width:30px;height:30px;border-radius:50%;background:${ROLE.air};border:2px solid #fff;color:#0a1626;font:700 11px/26px Arial;text-align:center">${a.iata}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(content).addTo(lay.air);
     track(`air:${a.iata}`, at, content, mk);
   });
   h.groups = Object.values(lay);
@@ -683,11 +687,11 @@ function compareRows(a, b) {
     ["Refinery fleet", fleet, fleet],
     ["Depot modules", depots, depots],
   ];
-  const head = text.map(([l, show, same]) => `<tr><td>${l}</td><td class="n">${show(a)}</td><td class="n">${show(b)}</td><td class="n">${same(a) === same(b) ? "Same" : "Differs"}</td></tr>`).join("");
+  const head = text.map(([l, show, same]) => `<tr><td>${l}</td><td class="n" data-label="Selected">${show(a)}</td><td class="n" data-label="Compared">${show(b)}</td><td class="n" data-label="Change">${same(a) === same(b) ? "Same" : "Differs"}</td></tr>`).join("");
   return head + rows.map(([l, f, d, est]) => {
     const x = g(a, f), y = g(b, f);
     const diff = x !== null && y !== null ? y - x : null;
-    return `<tr><td>${l}${est ? ` <span class="ev est" title="${esc(EV.est[2])}">Estimate</span>` : ""}</td><td class="n">${fmt(x, d)}</td><td class="n">${fmt(y, d)}</td><td class="n">${diff === null ? "n/a" : (diff >= 0 ? "+" : "") + fmt(diff, d)}</td></tr>`;
+    return `<tr><td>${l}${est ? ` <span class="ev est" title="${esc(EV.est[2])}">Estimate</span>` : ""}</td><td class="n" data-label="Selected">${fmt(x, d)}</td><td class="n" data-label="Compared">${fmt(y, d)}</td><td class="n" data-label="Change">${diff === null ? "n/a" : (diff >= 0 ? "+" : "") + fmt(diff, d)}</td></tr>`;
   }).join("");
 }
 
@@ -717,9 +721,9 @@ function renderScenarios() {
     ${list.map((s) => `<tr><td>${esc(state.names[s.key])}</td><td>${statusPill(s)}</td><td>${evidenceHtml(s)}</td><td class="n">${fmt(s.objective, 1)}</td><td class="n">${s.refineries.length ? fmt(s.kpis.unit_cost_usd_t) : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_refineries : "n/a"}</td><td class="n">${s.refineries.length ? s.kpis.n_depots : "n/a"}</td><td class="n">${gapText(s)}</td></tr>`).join("")}
   </table></div>
   <div class="grid2">
-    <div class="card"><h3>Side by side</h3><div class="row" style="margin-bottom:8px"><span class="note">${esc(state.names[a.key])}</span> vs <select id="cmpPick" aria-label="Scenario to compare with">${state.keys.map((k) => `<option value="${k}" ${k === state.other ? "selected" : ""}>${esc(state.names[k])}</option>`).join("")}</select></div>
-      <div class="scroll"><table><tr><th>Measure</th><th class="n">Selected</th><th class="n">Compared</th><th class="n">Change</th></tr>${compareRows(a, b)}</table></div>${compareNote(a, b)}</div>
-    <div class="card"><h3>Cost by scenario, USD M per year</h3><div class="chart tall"><canvas id="scenCost"></canvas></div></div>
+    <div class="card wide"><h3>Side by side</h3><div class="row" style="margin-bottom:8px"><span class="note">${esc(state.names[a.key])}</span> vs <select id="cmpPick" aria-label="Scenario to compare with">${state.keys.map((k) => `<option value="${k}" ${k === state.other ? "selected" : ""}>${esc(state.names[k])}</option>`).join("")}</select></div>
+      <div class="scroll"><table class="cmp"><tr><th>Measure</th><th class="n">Selected</th><th class="n">Compared</th><th class="n">Change</th></tr>${compareRows(a, b)}</table></div>${compareNote(a, b)}</div>
+    <div class="card wide"><h3>Cost by scenario, USD M per year</h3><div class="chart tall"><canvas id="scenCost"></canvas></div></div>
   </div>`;
   $("#cmpPick").onchange = (e) => { state.other = e.target.value; $("#scenario2").value = e.target.value; renderScenarios(); };
   const set = (label, f, color) => ({ label, data: ok.map(f), backgroundColor: color, borderColor: SURFACE, borderWidth: 2 });

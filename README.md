@@ -99,7 +99,7 @@ The HiGHS checks write `highs_check.json`, `bound_check.json` and `depot_check.j
 
 ## Front end
 
-The served site in `docs/` is plain HTML, CSS and JavaScript with no bundler. Leaflet draws the maps, Chart.js draws the charts, and the Rust engine runs in a web worker as `saf.wasm`. The November 2026 front-end review added keyboard access, accessible names, evidence labels and input validation, and changed no solver output. Its record, including the Astryx evaluation, the measurements, the tests run and the known limitations, is in [docs/FRONTEND.md](docs/FRONTEND.md).
+The served site in `docs/` is plain HTML, CSS and JavaScript with no bundler. Leaflet draws the maps, Chart.js draws the charts, and the Rust engine runs in a web worker as `saf.wasm`. The November 2026 front-end review added keyboard access, accessible names, evidence labels and input validation, and changed no solver output. Its record, including the Astryx evaluation, the measurements, the tests run and the known limitations, is in [docs/FRONTEND.md](docs/FRONTEND.md). A later polish pass fixed the Side by side table, the phone map legend, the Ask button overlap and the type scale, added a favicon and social tags, Subresource Integrity on the cdnjs files, normal caching of the result JSON and a shared `tokens.core.css`, and added a pull-request workflow (`.github/workflows/ci.yml`: engine tests, official-value check, 64 browser checks) that does not deploy. Details are in the same file.
 
 ## Run it
 
@@ -157,6 +157,7 @@ docs            the deployed site, result JSON and reports
 data            official datasets, OSRM road matrix, land mask
 scripts         data fetch, HiGHS check, report and deck generators (Python), check_ui.mjs front-end checks
 package.json    development-only dependencies for the front-end checks
+.github          pull-request workflow (tests and checks only, no deployment)
 ```
 
 The engine and app are Rust and JavaScript. Python is used only for data fetching, independent checks and document generation.

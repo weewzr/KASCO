@@ -108,12 +108,37 @@ The before values for axe come from a run against the baseline commit with the s
 - The mass-balance screen is a necessary condition. A pass does not promise a feasible network.
 - Cancel replaces the worker, so the next solve reloads `saf.wasm` from the browser cache.
 - The address bar holds the tab only, not the selected scenario.
-- Leaflet and Chart.js still load from cdnjs without integrity attributes, as before.
+- Leaflet and Chart.js still load from cdnjs, now with Subresource Integrity (see the polish pass below). A new library version needs new hashes.
 - `npm run check:ui` needs network access for those libraries and the map tiles, and a Chrome or Edge executable (set `CHROME_PATH` if it is not in a standard place).
 
 ## Future maintenance
 
-- Cache-busting query strings are now `style.css?v=9`, `app.js?v=7` and `assistant.js?v=5`. Bump them with any edit.
+- Cache-busting query strings are now `tokens.core.css?v=1`, `style.css?v=10`, `app.js?v=8` and `assistant.js?v=6`. Bump them with any edit. The result JSON is cached normally and carries `DATA_V` in `app.js` (currently 1): bump it whenever any file in `docs/data` changes, or a visitor can keep a stale result for the cache lifetime.
+- When Leaflet or Chart.js is upgraded, recompute the `integrity` hashes from the exact files: `curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A`, and compare with the sha512 that the cdnjs API lists for the file.
 - Evidence badges follow each scenario's `status`. A new scenario that rests on public data must be added to `REALITY_CHECK` in `docs/app.js`.
-- Run `npm run check:ui` before publishing, because merging to `main` publishes the site at once.
+- Pull requests run `.github/workflows/ci.yml` (engine tests, official-value check, the 64 browser checks). Run `npm run check:ui` before publishing anyway, because merging to `main` publishes the site at once and the workflow does not deploy.
 - Revisit Astryx only if the whole front end moves to a component framework. A single island does not repay its size here.
+
+## Layout polish and CI pass (branch `fix/layout-polish-and-ci`)
+
+Targeted fixes to the live site. The dark teal identity, the tagline, the evidence badges, the source tags, the proven-gap wording, the limits and assumption registers, every number and the in-browser solver are unchanged. No Rust code, no file in `docs/data` and not `docs/saf.wasm` changed.
+
+| Defect (Stage A audit) | Fix |
+|---|---|
+| Side by side table clipped on desktop, value columns off-screen on a phone | The card spans the full width of the grid, and so does the chart card below it. At 720 px and narrower each measure becomes a stacked block (label, then Selected, Compared and Change with their own captions, taken from `data-label` attributes). The visually hidden header row is kept for screen readers. |
+| Map legend covered about 40 percent of a phone map | The legend is a `<details>` titled "Legend". It starts closed at 720 px and narrower (1.7 percent of the map) and open on larger screens, and a viewer can toggle it from the keyboard. The sortable site list is unchanged. |
+| Floating Ask button covered the footer and last rows | The footer has 84 px of bottom padding, so at the end of every tab the button sits below the last line of text (checked by measuring the footer text range against the button). |
+| Flat, small type scale | Data text is at least 13 px (was 11 to 12.5 px in places): table 14, headers 13.5, pills and badges 13, notes 13.5, tile captions 13, footer 13.5, legend and popups 13, form units 13. h2 is 20 px, h3 16 px at weight 650, form legends 15 px. Body stays 15 px, tile values 24 px. The smallest rendered text on the Scenario analysis tab, header and footer is 12.5 px (source tags). |
+| White text on teal | The audit computed 2.56:1. No control used that pair (buttons are white on the forest green `#1f7a4d`, 5.32:1). The token `--on-teal: #0a1626` (7.09:1 on `#19b5a5`) is defined for any future teal fill. One real low pair was found and fixed: the white airport code on the blue marker (3.64:1) is now navy (4.99:1). |
+| No favicon, theme colour or Open Graph tags | `favicon.svg`, `theme-color`, `og:*` and a Twitter card tag, and a 1200 x 630 `og.png` with the name and a plain description only. The image is not loaded by the page. |
+| No integrity on cdnjs files | `integrity` (sha384), `crossorigin="anonymous"` and `referrerpolicy="no-referrer"` on Leaflet CSS, Leaflet JS and Chart.js. Hashes were computed from the exact downloaded files and their sha512 matched the cdnjs API listing. |
+| Result JSON fetched with `no-store` | `fetch("data/<name>.json?v=" + DATA_V)` with the browser's normal caching. |
+| No shared tokens | `docs/tokens.core.css` (version 1.0.0, spacing, radii, motion, focus width, minimum sizes, Okabe-Ito palette) is loaded before `style.css`. `style.css` uses its focus width and offset and two radii where the values were identical, so the look is unchanged. |
+
+Contrast of the token pairs involved (WCAG 2.x relative luminance, computed from the hex values): white on forest 5.32, navy on teal 7.09, navy on airport blue 4.99, teal on page background 7.09, muted on surface 6.52, muted on surface 2 5.54, link on surface 7.32, warning on surface 2 5.93, failure on surface 2 5.20, good on surface 2 5.80. Every pair is at least 4.5:1.
+
+Page weight, cold load of the Overview tab in headless Edge against a local server without compression (`Network.loadingFinished` encoded bytes, all requests including cdnjs and map tiles): 403,724 B in 29 requests before, 408,792 B in 30 requests after. Own first-load code, gzip with LF endings: HTML 1,165 to 1,602 B, CSS 3,919 to 4,294 B plus 634 B for `tokens.core.css`, `app.js` 25,556 to 25,776 B, `assistant.js` 8,058 B unchanged, and a 225 B favicon. The total goes from 38,698 B to 40,589 B. There is no new third-party host: the only external host is still cdnjs (plus the map tiles). The favicon request that returned 404 now succeeds.
+
+Continuous integration: `.github/workflows/ci.yml` runs on pull requests only, in three jobs. `cargo test --release -p saf_engine --locked`; `scripts/check_official.py` followed by a diff of `docs/data/official_check.json`; and `npm run check:ui` in the runner's Chrome (`CHROME_PATH`, with `--no-sandbox` added by `check_ui.mjs` when `CI` is set). It does not deploy, and GitHub Pages keeps publishing `docs/` from `main` through its own workflow. The HiGHS cross-check scripts are not in CI because they need the full Python stack and long solves.
+
+Checks run for this pass, locally: `cargo test --release -p saf_engine` 38 passed; `check_official.py` in a Python 3.12 virtual environment 30 of 30 with the committed output unchanged; `npm ci` and `npm run check:ui` with Edge 64 of 64. The workflow itself has not run on GitHub yet: it only triggers on a pull request. No horizontal scroll at 390 px on any of the seven tabs, one h1 per page, every focus stop shows a 2 px ring, and reduced motion still shortens transitions to about 0.001 ms.

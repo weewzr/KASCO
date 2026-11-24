@@ -1,0 +1,60 @@
+# Checks for pull requests. This workflow never deploys: GitHub Pages keeps serving docs/ from main
+# through its own automatic "pages-build-deployment" workflow, which this file does not touch.
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    name: Rust engine tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable Rust
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - run: cargo test --release -p saf_engine --locked
+
+  official-values:
+    name: Official-value checks (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Only the packages check_official.py imports. The HiGHS cross-checks need the full requirements-dev.txt
+      # and a release build of the CLI, and stay a manual step, as the README describes.
+      - run: python -m pip install numpy pandas openpyxl
+      - run: python scripts/check_official.py
+      - name: The committed check result must equal the regenerated one
+        run: git diff --exit-code -- docs/data/official_check.json
+
+  browser:
+    name: Browser checks (64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run the browser checks in headless Chrome
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npm run check:ui
