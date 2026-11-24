@@ -1,42 +1,41 @@
-/*
- * tokens.core.css  version 1.0.0  (2026-11-24)
- * Shared core design tokens for the weewzr portfolio repositories.
- * Source of truth: docs/DESIGN_SYSTEM.md in the weewzr/weewzr repository (shared core section).
- * This file is copied, not linked. Site colours and typefaces stay in each repository's own style sheet.
- * Holds spacing, radii, durations, focus width, minimum sizes and the colour-vision-safe (Okabe-Ito) palette only.
- */
+/* tokens.core.css, shared design core, version 1.0.0 (2026-11-24)
+   Source of truth: https://github.com/weewzr/weewzr/blob/main/docs/DESIGN_SYSTEM.md (part A, shared core)
+   Copied unchanged into each of the owner's sites. Site colours and typefaces live in the site's own token file.
+   Breakpoints (CSS variables cannot be used in media queries): 640, 768, 1024, 1280 px. */
 :root {
-  /* Spacing, 4 px base */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --space-8: 64px;
-  --space-9: 96px;
-  /* Radii */
+  /* Spacing scale: 4, 8, 12, 16, 24, 32, 48, 64, 96 px. No value outside the scale. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  /* Radii. 9999px is for status dots and avatars only. */
   --radius-sm: 4px;
   --radius: 8px;
   --radius-lg: 12px;
-  /* Motion: colour and opacity only, except explanatory figures */
+  /* Motion: colour and opacity only, except explanatory figures. All become 0 under prefers-reduced-motion. */
   --dur-fast: 120ms;
   --dur-base: 150ms;
   --dur-explain: 250ms;
-  /* Focus ring: 2 px outline, 2 px offset */
+  --ease-standard: ease;
+  /* Focus and touch. */
   --focus-width: 2px;
   --focus-offset: 2px;
-  /* Minimum sizes */
-  --min-text: 13px;
-  --min-tick: 12px;
-  --min-target: 44px;
-  /* Colour-vision-safe categorical palette (Okabe-Ito) */
-  --cvd-1: #0072B2;
-  --cvd-2: #D55E00;
-  --cvd-3: #009E73;
-  --cvd-4: #E69F00;
-  --cvd-5: #56B4E9;
-  --cvd-6: #CC79A7;
-  --cvd-7: #F0E442;
+  --touch-min: 44px;
+  /* Type floors and measure. */
+  --text-min: 0.8125rem;
+  --tick-min: 0.75rem;
+  --measure: 68ch;
+  /* Categorical palette (Okabe-Ito), ordered by contrast on light backgrounds. Colour never encodes a series alone. */
+  --cvd-1: #0072b2;
+  --cvd-2: #d55e00;
+  --cvd-3: #009e73;
+  --cvd-4: #cc79a7;
+  --cvd-5: #e69f00;
+  --cvd-6: #56b4e9;
+  --cvd-7: #f0e442;
 }

@@ -113,7 +113,7 @@ The before values for axe come from a run against the baseline commit with the s
 
 ## Future maintenance
 
-- Cache-busting query strings are now `tokens.core.css?v=1`, `style.css?v=10`, `app.js?v=8` and `assistant.js?v=6`. Bump them with any edit. The result JSON is cached normally and carries `DATA_V` in `app.js` (currently 1): bump it whenever any file in `docs/data` changes, or a visitor can keep a stale result for the cache lifetime.
+- Cache-busting query strings are now `tokens.core.css?v=1`, `style.css?v=10`, `app.js?v=9` and `assistant.js?v=6`. Bump them with any edit. The result JSON is cached normally and carries `DATA_V` in `app.js` (currently 1): bump it whenever any file in `docs/data` changes, or a visitor can keep a stale result for the cache lifetime.
 - When Leaflet or Chart.js is upgraded, recompute the `integrity` hashes from the exact files: `curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A`, and compare with the sha512 that the cdnjs API lists for the file.
 - Evidence badges follow each scenario's `status`. A new scenario that rests on public data must be added to `REALITY_CHECK` in `docs/app.js`.
 - Pull requests run `.github/workflows/ci.yml` (engine tests, official-value check, the 64 browser checks). Run `npm run check:ui` before publishing anyway, because merging to `main` publishes the site at once and the workflow does not deploy.
@@ -133,7 +133,7 @@ Targeted fixes to the live site. The dark teal identity, the tagline, the eviden
 | No favicon, theme colour or Open Graph tags | `favicon.svg`, `theme-color`, `og:*` and a Twitter card tag, and a 1200 x 630 `og.png` with the name and a plain description only. The image is not loaded by the page. |
 | No integrity on cdnjs files | `integrity` (sha384), `crossorigin="anonymous"` and `referrerpolicy="no-referrer"` on Leaflet CSS, Leaflet JS and Chart.js. Hashes were computed from the exact downloaded files and their sha512 matched the cdnjs API listing. |
 | Result JSON fetched with `no-store` | `fetch("data/<name>.json?v=" + DATA_V)` with the browser's normal caching. |
-| No shared tokens | `docs/tokens.core.css` (version 1.0.0, spacing, radii, motion, focus width, minimum sizes, Okabe-Ito palette) is loaded before `style.css`. `style.css` uses its focus width and offset and two radii where the values were identical, so the look is unchanged. |
+| No shared tokens | `docs/tokens.core.css` (version 1.0.0, spacing, radii, motion, focus width, minimum sizes, Okabe-Ito palette) is loaded before `style.css`; it is the unchanged canonical copy from weewzr/weewzr (variable names `--text-min`, `--tick-min`, `--touch-min`, `--measure`, rem spacing), and `style.css` does not use the minimum-size tokens. `style.css` uses its focus width and offset and two radii where the values were identical, so the look is unchanged. |
 
 Contrast of the token pairs involved (WCAG 2.x relative luminance, computed from the hex values): white on forest 5.32, navy on teal 7.09, navy on airport blue 4.99, teal on page background 7.09, muted on surface 6.52, muted on surface 2 5.54, link on surface 7.32, warning on surface 2 5.93, failure on surface 2 5.20, good on surface 2 5.80. Every pair is at least 4.5:1.
 
@@ -142,3 +142,9 @@ Page weight, cold load of the Overview tab in headless Edge against a local serv
 Continuous integration: `.github/workflows/ci.yml` runs on pull requests only, in three jobs. `cargo test --release -p saf_engine --locked`; `scripts/check_official.py` followed by a diff of `docs/data/official_check.json`; and `npm run check:ui` in the runner's Chrome (`CHROME_PATH`, with `--no-sandbox` added by `check_ui.mjs` when `CI` is set). It does not deploy, and GitHub Pages keeps publishing `docs/` from `main` through its own workflow. The HiGHS cross-check scripts are not in CI because they need the full Python stack and long solves.
 
 Checks run for this pass, locally: `cargo test --release -p saf_engine` 38 passed; `check_official.py` in a Python 3.12 virtual environment 30 of 30 with the committed output unchanged; `npm ci` and `npm run check:ui` with Edge 64 of 64. The workflow itself has not run on GitHub yet: it only triggers on a pull request. No horizontal scroll at 390 px on any of the seven tabs, one h1 per page, every focus stop shows a 2 px ring, and reduced motion still shortens transitions to about 0.001 ms.
+
+## Tick labels, map markers and CI hardening (follow-up to the independent check)
+
+- The y-axis labels of the two horizontal bar charts are now 12 px (the tick minimum). Labels longer than 44 characters, or 24 below 520 px viewport width, are cut with an ellipsis; the tooltip keeps the full name.
+- The airport markers on the map are 34 px with a 12 px bold code. This is glyph-like map labelling; it stays below the 13 px text minimum on purpose and its contrast is 4.99:1.
+- The pull-request workflow pins each action to a full commit SHA (tag in a comment), does not persist checkout credentials, has a 20-minute timeout per job and pins the three Python packages.

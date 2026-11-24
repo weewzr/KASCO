@@ -87,6 +87,8 @@ const rpc = (cmd, payload) => new Promise((res, rej) => {
 
 // Result JSON is cached normally. Bump DATA_V whenever any file in docs/data changes, so a stale copy is never served.
 const DATA_V = 1;
+// Category tick labels on the horizontal bar charts: 12 px, and long scenario names are cut with an ellipsis on narrow screens (the tooltip keeps the full name).
+function shortTick(v) { const l = this.getLabelForValue(v); const s = Array.isArray(l) ? l.join(" ") : String(l); const max = window.innerWidth < 520 ? 24 : 44; return s.length > max ? s.slice(0, max - 1) + "…" : s; }
 async function getJson(name) {
   const r = await fetch(`data/${name}.json?v=${DATA_V}`);
   if (!r.ok) return null;
@@ -352,7 +354,7 @@ function drawNetwork(id, s) {
   state.net.airports.forEach((a, i) => {
     const content = `<div class="pop-h">${esc(a.name)}</div><div class="pop-s">${esc(a.city)}${i === 3 ? ", island, barge last leg" : ""}</div>${popTable([["SAF demand", `${fmt(s.kpis.demand_by_airport ? s.kpis.demand_by_airport[i] : 0, 1)} kt/yr`], ["SAF delivered", `${fmt(s.kpis.delivered_by_airport ? s.kpis.delivered_by_airport[i] : 0, 1)} kt/yr`]])}`;
     const at = `Airport ${a.iata}, ${a.name}`;
-    const mk = L.marker([a.lat, a.lon], { zIndexOffset: 1000, title: at, alt: at, icon: L.divIcon({ className: "", html: `<div style="width:30px;height:30px;border-radius:50%;background:${ROLE.air};border:2px solid #fff;color:#0a1626;font:700 11px/26px Arial;text-align:center">${a.iata}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindPopup(content).addTo(lay.air);
+    const mk = L.marker([a.lat, a.lon], { zIndexOffset: 1000, title: at, alt: at, icon: L.divIcon({ className: "", html: `<div style="width:34px;height:34px;border-radius:50%;background:${ROLE.air};border:2px solid #fff;color:#0a1626;font:700 12px/30px Arial;text-align:center">${a.iata}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] }) }).bindPopup(content).addTo(lay.air);
     track(`air:${a.iata}`, at, content, mk);
   });
   h.groups = Object.values(lay);
@@ -730,7 +732,7 @@ function renderScenarios() {
   chart("scenCost", {
     type: "bar",
     data: { labels: ok.map((s) => state.names[s.key].slice(0, 34)), datasets: [set("Annualised CapEx", (s) => s.costs.annual_capex, COL.s1), set("Fixed OpEx", (s) => s.costs.opex_fixed, COL.s2), set("Variable OpEx", (s) => s.costs.opex_variable, COL.s3), set("Transport", (s) => s.costs.logistics_total, COL.s4)] },
-    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } } }, scales: { x: { stacked: true, grid: { color: COL.grid } }, y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } } } },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } } }, scales: { x: { stacked: true, grid: { color: COL.grid } }, y: { stacked: true, grid: { display: false }, ticks: { font: { size: 12 }, callback: shortTick } } } },
   });
 }
 
@@ -844,7 +846,7 @@ function renderEvaluation() {
   chart("baseChart", {
     type: "bar",
     data: { labels: chartRows.map((r) => r[0]), datasets: [{ label: "USD M per year", data: chartRows.map((r) => r[1]), backgroundColor: chartRows.map((_, i) => (i ? COL.muted : COL.s1)), borderRadius: 4, barThickness: 16 }] },
-    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, grid: { color: COL.grid } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, grid: { color: COL.grid } }, y: { grid: { display: false }, ticks: { font: { size: 12 }, callback: shortTick } } } },
   });
   const base = state.sens.base;
   const sr = state.sens.rows;
